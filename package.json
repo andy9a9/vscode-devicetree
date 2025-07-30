@@ -34,6 +34,21 @@
                 "command": "devicetree.helloWorld",
                 "title": "Hello World"
             }
+        ],
+        "languages": [
+            {
+                "id": "dts",
+                "aliases": [
+                    "DeviceTree",
+                    "dts"
+                ],
+                "extensions": [
+                    ".dts",
+                    ".dtsi",
+                    ".dtso"
+                ],
+                "configuration": "./syntaxes/devicetree-language.json"
+            }
         ]
     },
     "devDependencies": {
