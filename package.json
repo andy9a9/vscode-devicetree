@@ -1,0 +1,57 @@
+{
+    "name": "devicetree",
+    "displayName": "DeviceTree",
+    "version": "0.0.1",
+    "description": "DeviceTree Language Support for Visual Studio Code",
+    "categories": [
+        "Programming Languages",
+        "Linters",
+        "Formatters"
+    ],
+    "author": {
+        "name": "Andrej Valek"
+    },
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/andy9a9/vscode-devicetree"
+    },
+    "main": "./dist/extension.js",
+    "scripts": {
+        "compile": "webpack",
+        "compile-tests": "tsc -p . --outDir out",
+        "lint": "eslint src",
+        "package": "webpack --mode production --devtool hidden-source-map",
+        "pretest": "npm run compile-tests && npm run compile && npm run lint",
+        "test": "vscode-test",
+        "vscode:prepublish": "npm run package",
+        "watch": "webpack --watch",
+        "watch-tests": "tsc -p . -w --outDir out"
+    },
+    "contributes": {
+        "commands": [
+            {
+                "command": "devicetree.helloWorld",
+                "title": "Hello World"
+            }
+        ]
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.10",
+        "@types/node": "20.x",
+        "@types/vscode": "^1.43.0",
+        "@typescript-eslint/eslint-plugin": "^8.31.1",
+        "@typescript-eslint/parser": "^8.31.1",
+        "@vscode/test-cli": "^0.0.11",
+        "@vscode/test-electron": "^2.5.2",
+        "eslint": "^9.25.1",
+        "ts-loader": "^9.5.2",
+        "typescript": "^5.8.3",
+        "webpack": "^5.99.7",
+        "webpack-cli": "^6.0.1"
+    },
+    "engines": {
+        "vscode": "^1.43.0"
+    },
+    "icon": "images/icon.png"
+}
