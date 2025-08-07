@@ -23,6 +23,14 @@
             "begin": "/\\*",
             "end": "\\*/",
             "name": "comment.block"
+        },
+        {"include": "#string"}
+    ],
+    "repository": {
+        "string": {
+            "comment": "String literals",
+            "match": "\".*?\"",
+            "name": "string.quoted.double"
         }
-    ]
+    }
 }
