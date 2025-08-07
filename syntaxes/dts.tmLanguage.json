@@ -34,15 +34,32 @@
             }
         },
         {
+            "comment": "Cell properties",
+            "begin": "<",
+            "end": ">",
+            "patterns": [
+                {"include": "#reference"},
+                {"include": "#number"},
+                {"include": "#constant"},
+                {"include": "#block-comment"}
+            ]
+        },
+        {"include": "#reference"},
+        {"include": "#string"},
+        {"include": "#block-comment"}
+    ],
+    "repository": {
+        "block-comment": {
             "comment": "Block comments",
             "begin": "/\\*",
             "end": "\\*/",
             "name": "comment.block"
         },
-        {"include": "#reference"},
-        {"include": "#string"}
-    ],
-    "repository": {
+        "number": {
+            "comment": "Numeric literals",
+            "match": "(0x[0-9a-fA-F]+|[[:digit:]]+)",
+            "name": "constant.numeric"
+        },
         "reference": {
             "comment": "Node references",
             "match": "&[0-9a-zA-Z,._\\-+]+",
@@ -52,6 +69,15 @@
             "comment": "String literals",
             "match": "\".*?\"",
             "name": "string.quoted.double"
+        },
+        "constant": {
+            "comment": "Constants and macros",
+            "patterns": [
+                {
+                    "match": "\\b[A-Z_][A-Z0-9_]*\\b",
+                    "name": "constant.language"
+                }
+            ]
         }
     }
 }
