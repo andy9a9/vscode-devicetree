@@ -39,9 +39,15 @@
             "end": "\\*/",
             "name": "comment.block"
         },
+        {"include": "#reference"},
         {"include": "#string"}
     ],
     "repository": {
+        "reference": {
+            "comment": "Node references",
+            "match": "&[0-9a-zA-Z,._\\-+]+",
+            "name": "variable.other"
+        },
         "string": {
             "comment": "String literals",
             "match": "\".*?\"",
