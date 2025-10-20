@@ -30,27 +30,47 @@ This extension provides comprehensive syntax highlighting for Device Tree Source
 - `.dtsi` - Device Tree Source Include files
 - `.dtso` - Device Tree Source Overlays files
 
-### Comamnds
+## Installation
 
-It just prints `Hello World from DeviceTree!` for now
+Install this extension from the [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=devicetree) or by searching for "DeviceTree" in the Extensions panel (`Ctrl+Shift+X`).
 
+## Commands
 
-## How to Test the Extension
+### `DeviceTree: Hello World`
+Displays a welcome message (placeholder command for future DeviceTree functionality).
 
-- Press `F5` to open a new window with your extension loaded
+### `DeviceTree: Validate Syntax` *(Coming Soon)*
+Validates DeviceTree syntax and highlights errors.
 
+### `DeviceTree: Format Document` *(Coming Soon)*
+Formats DeviceTree files according to standard conventions.
 
-### Syntax Highlighting
+## Development and Testing
 
-- Open a `.dts`, `.dtsi` or `.dtso` file to see syntax highlighting in action
-- The highlighting should automatically apply to Device Tree files
+### For Users
+- The extension automatically activates when you open DeviceTree files (`.dts`, `.dtsi`, `.dtso`)
+- Syntax highlighting is applied immediately
+- Access commands via Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
 
+### For Developers
+- Press `F5` to open a new Extension Development Host window
+- Open DeviceTree files to test syntax highlighting
+- Set breakpoints in `src/extension.ts` for debugging
+- View extension output in the Debug Console
 
-### Commands
+## Contributing
 
-- Run your command from the command palette by pressing (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) and typing `Hello World`.
-- Set breakpoints in your code inside src/extension.ts to debug your extension.
-- Find output from your extension in the debug console.
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Reporting Issues
+- Use the [GitHub Issues](https://github.com/andy9a9/vscode-devicetree/issues) page
+- Include your VS Code version, extension version, and sample DeviceTree files
+- Describe expected vs actual behavior
+
+### Feature Requests
+- Check existing issues before creating new ones
+- Describe the use case and expected functionality
+- Include examples of DeviceTree syntax that should be supported
 
 
 ## License
