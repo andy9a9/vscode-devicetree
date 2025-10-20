@@ -1,0 +1,36 @@
+# Source files (not needed in production)
+src/**
+out/**
+
+# Build artifacts
+*.vsix
+node_modules/**/.vscode/**
+
+# Development and configuration files
+.vscode/**
+.vscode-test/**
+.vscode-test.mjs
+.gitignore
+.git/**
+.github/**
+.claude/**
+eslint.config.mjs
+tsconfig.json
+webpack.config.js
+
+# Documentation (keep README, LICENSE, CHANGELOG)
+docs/**
+CONTRIBUTING.md
+
+# macOS files
+.DS_Store
+**/.DS_Store
+
+# Source maps (exclude all for smaller package)
+**/*.map
+
+# Package manager files
+package-lock.json
+yarn.lock
+.npmrc
+.yarnrc
