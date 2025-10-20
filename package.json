@@ -3,6 +3,18 @@
     "displayName": "DeviceTree",
     "version": "0.0.1",
     "description": "DeviceTree Language Support for Visual Studio Code",
+    "publisher": "devicetree",
+    "keywords": [
+        "devicetree",
+        "dts",
+        "dtsi",
+        "dtso",
+        "device tree",
+        "embedded",
+        "linux",
+        "kernel",
+        "syntax highlighting"
+    ],
     "categories": [
         "Programming Languages",
         "Linters",
@@ -16,6 +28,10 @@
         "type": "git",
         "url": "https://github.com/andy9a9/vscode-devicetree"
     },
+    "bugs": {
+        "url": "https://github.com/andy9a9/vscode-devicetree/issues"
+    },
+    "homepage": "https://github.com/andy9a9/vscode-devicetree#readme",
     "main": "./dist/extension.js",
     "scripts": {
         "compile": "webpack",
@@ -61,10 +77,10 @@
     "devDependencies": {
         "@types/mocha": "^10.0.10",
         "@types/node": "20.x",
-        "@types/vscode": "^1.43.0",
+        "@types/vscode": "^1.75.0",
         "@typescript-eslint/eslint-plugin": "^8.31.1",
         "@typescript-eslint/parser": "^8.31.1",
-        "@vscode/test-cli": "^0.0.11",
+        "@vscode/test-cli": "^0.0.12",
         "@vscode/test-electron": "^2.5.2",
         "eslint": "^9.25.1",
         "ts-loader": "^9.5.2",
@@ -73,7 +89,7 @@
         "webpack-cli": "^6.0.1"
     },
     "engines": {
-        "vscode": "^1.43.0"
+        "vscode": "^1.75.0"
     },
     "icon": "images/icon.png"
 }
