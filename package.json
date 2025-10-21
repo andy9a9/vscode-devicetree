@@ -3,7 +3,7 @@
     "displayName": "DeviceTree",
     "version": "0.0.1",
     "description": "DeviceTree Language Support for Visual Studio Code",
-    "publisher": "devicetree",
+    "publisher": "andy9a9",
     "keywords": [
         "devicetree",
         "dts",
@@ -23,6 +23,11 @@
     "author": {
         "name": "Andrej Valek"
     },
+    "contributors": [
+        {
+            "name": "Markus Kessler"
+        }
+    ],
     "license": "MIT",
     "repository": {
         "type": "git",
