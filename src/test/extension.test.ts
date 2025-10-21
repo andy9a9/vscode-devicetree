@@ -5,11 +5,11 @@ suite('DeviceTree Extension Test Suite', () => {
     vscode.window.showInformationMessage('Running DeviceTree extension tests...');
 
     test('Extension should be present', () => {
-        assert.ok(vscode.extensions.getExtension('devicetree.devicetree'));
+        assert.ok(vscode.extensions.getExtension('andy9a9.devicetree'));
     });
 
     test('Extension should activate', async () => {
-        const extension = vscode.extensions.getExtension('devicetree.devicetree');
+        const extension = vscode.extensions.getExtension('andy9a9.devicetree');
         assert.ok(extension);
         await extension?.activate();
         assert.strictEqual(extension?.isActive, true);
