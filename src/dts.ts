@@ -10,6 +10,53 @@ interface ResultFormat {
 }
 
 /**
+ * Provider for DeviceTree diagnostic warnings
+ * Manages diagnostic warnings for DeviceTree files, such as line length issues
+ */
+export class DtsDiagnosticsProvider {
+    private diagnosticCollection: vscode.DiagnosticCollection;
+
+    constructor() {
+        this.diagnosticCollection = vscode.languages.createDiagnosticCollection('devicetree');
+    }
+
+    /**
+     * Updates diagnostics for a document with warning markers
+     * @param document - The VS Code text document to update diagnostics for
+     * @param warningLines - Array of line numbers (0-based) where warnings should be shown
+     */
+    public updateDiagnostics(document: vscode.TextDocument, warningLines: number[]): void {
+        const diagnostics: vscode.Diagnostic[] = [];
+
+        for (const line of warningLines) {
+            const range = new vscode.Range(line, 0, line, 0);
+            const diagnostic = new vscode.Diagnostic(
+                range,
+                'DeviceTree warning',
+                vscode.DiagnosticSeverity.Warning
+            );
+            diagnostics.push(diagnostic);
+        }
+
+        this.diagnosticCollection.set(document.uri, diagnostics);
+    }
+
+    /**
+     * Clear all diagnostics
+     */
+    public clear(): void {
+        this.diagnosticCollection.clear();
+    }
+
+    /**
+     * Dispose the diagnostic collection
+     */
+    public dispose(): void {
+        this.diagnosticCollection.dispose();
+    }
+}
+
+/**
  * DeviceTree Source (.dts) formatter class
  * Handles formatting of DeviceTree source files with proper indentation,
  * line wrapping, and comment alignment
@@ -449,9 +496,39 @@ class DtsFormatter {
  */
 export class DtsFormatterProvider implements vscode.DocumentFormattingEditProvider {
     private outputChannel: vscode.OutputChannel;
+    private diagnosticsProvider: DtsDiagnosticsProvider;
 
     constructor() {
         this.outputChannel = vscode.window.createOutputChannel('DeviceTree Formatter');
+        this.diagnosticsProvider = new DtsDiagnosticsProvider();
+    }
+
+    /**
+     * Check the formatted document for warnings and apply them
+     * This will schedule diagnostics to be applied after the document is updated
+     */
+    private checkFormattedDocumentWarnings(formattedText: string, maxLineLength: number, tabSize: number): void {
+        const warningLines: number[] = [];
+        const lines = formattedText.split('\n');
+
+        // Check each line in the FORMATTED document
+        lines.forEach((line, index) => {
+            const visualLength = line.replace(/\t/g, ' '.repeat(tabSize)).length;
+            if (visualLength > maxLineLength + 1) {
+                warningLines.push(index);
+            }
+        });
+
+        // Apply warnings to the document AFTER formatting is complete
+        if (warningLines.length > 0) {
+            // Use setTimeout to apply diagnostics after the document has been updated
+            setTimeout(() => {
+                const activeDocument = vscode.window.activeTextEditor?.document;
+                if (activeDocument && activeDocument.languageId === 'dts') {
+                    this.diagnosticsProvider.updateDiagnostics(activeDocument, warningLines);
+                }
+            }, 100); // Small delay to ensure document is updated
+        }
     }
 
     /**
@@ -473,10 +550,14 @@ export class DtsFormatterProvider implements vscode.DocumentFormattingEditProvid
         const useTabs = !options.insertSpaces;
         const tabSize = options.tabSize;
         const maxLineLength = vscode.workspace.getConfiguration('devicetree').get<number>('maxLineLength', 80) + 1;
+        const enableWarnings = vscode.workspace.getConfiguration('devicetree').get<boolean>('enableWarnings', true);
 
         // Create formatter with current settings
         const formatter = new DtsFormatter(useTabs, tabSize, maxLineLength, this.outputChannel);
         const [result, formatResult] = formatter.format(document.getText());
+
+        // Clear previous diagnostics
+        this.diagnosticsProvider.clear();
 
         // Handle formatting errors
         if (!formatResult.success || !result) {
@@ -484,6 +565,11 @@ export class DtsFormatterProvider implements vscode.DocumentFormattingEditProvid
             this.outputChannel.appendLine(`Error: ${errorMessage}`);
             vscode.window.showErrorMessage(`DeviceTree Formatter: ${errorMessage}`);
             return [];
+        }
+
+        // Check warnings on the FORMATTED document and apply them after formatting
+        if (enableWarnings) {
+            this.checkFormattedDocumentWarnings(result, maxLineLength, tabSize);
         }
 
         // Return a single edit that replaces the entire document
@@ -503,5 +589,6 @@ export class DtsFormatterProvider implements vscode.DocumentFormattingEditProvid
      */
     dispose(): void {
         this.outputChannel.dispose();
+        this.diagnosticsProvider.dispose();
     }
 }
