@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+export { DtsFormatter };
 
 /**
  * Interface for formatting operation results

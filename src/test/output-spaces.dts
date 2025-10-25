@@ -1,0 +1,69 @@
+/dts-v1/;
+
+/ {
+        /* this is first type of  comment */
+        a-node {
+                // this is second type of comment
+                subnode_nodelabel: a-sub-node {
+                        // this comment is re                            ally looonger than the expexcted size 80 chars
+                        foo = <3>;
+                };
+        };
+
+        /* not connected on HW */
+        nc: ncGrp {
+                fsl,pins = <MX8MP_IOMUXC_SPDIF_RX__GPIO5_IO04        0x6>,
+                           <MX8MP_IOMUXC_NAND_CE0_B__GPIO3_IO01xxxxx 0x6>; /* SODIMM 1 */
+        };
+
+        nc2: ncGrp2 {
+                fsl,pins = <MX8MP_IOMUXC_SPDIF_RX__GPIO5_IO04   0x6>, /* SODIMM 2 */
+                           <MX8MP_IOMUXC_NAND_CE0_B__GPIO3_IO01 0x6>;
+        };
+
+        nc2: ncGrp3 {
+                fsl,pins = <MX8MP_IOMUXC_SPDIF_RX__GPIO5_IO04 0x6>; /* SODIMM 3 */
+        };
+
+        pinctrl_spec: specGrp {
+                fsl,pins = <MX8MP_IOMUXC_SAI2_TXFS__GPIO4_IO24  0x116>, /* SODIMM 4: out, pull-down, fast */
+                           <MX8MP_IOMUXC_SAI1_RXC__GPIO4_IO01   0x006>, /*  SODIMM 5: in, no-pull */
+                           <MX8MP_IOMUXC_SD1_DATA5__GPIO2_IO07  0x116>, /* SODIMM 6: out, pull-down, fast */
+                           <MX8MP_IOMUXC_ECSPI2_SS0__GPIO5_IO13 0x116>, /* SODIMM 7: out, pull-down, fast */
+                           <MX8MP_IOMUXC_SAI1_TXD6__GPIO4_IO18  0x006>; /* SODIMM 8: in, no-pull */
+        };
+
+        pinctrl_usdhc3: usdhc3grp {
+                fsl,pins = <MX8MP_IOMUXC_NAND_CE1_B__USDHC3_STROBE  0x190>,
+                           <MX8MP_IOMUXC_GPIO1_IO09__USDHC3_RESET_B 0x1d1>,
+                           <MX8MP_IOMUXC_NAND_CE3_B__USDHC3_DATA6   0x1d0>,
+                           <MX8MP_IOMUXC_NAND_CLE__USDHC3_DATA7     0x1d0>,
+                           <MX8MP_IOMUXC_NAND_DATA04__USDHC3_DATA0  0x1d0>,
+                           <MX8MP_IOMUXC_NAND_DATA05__USDHC3_DATA1  0x1d0>,
+                           <MX8MP_IOMUXC_NAND_RE_B__USDHC3_DATA4    0x1d0>,
+                           <MX8MP_IOMUXC_NAND_WE_B__USDHC3_CLK      0x190>,
+                           <MX8MP_IOMUXC_NAND_WP_B__USDHC3          0x1d0>;
+        };
+
+        /* SW GPIO */
+        spi_gpio: spi-gpio {
+                sck-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>; /* 1V8 */
+                mosi-gpios = <&gpio2 1 GPIO_ACTIVE_HIGH>; /* 1V8 */
+                num-chipselects = <1>;
+                status = "okay";
+
+                dev: dev-grp@0 {
+                        reg = <0>;
+                        pinctrl-names = "default";
+                        pinctrl-0 = <&pinctrl_a1>,
+                                    <&pinctrl_a2>,
+                                    <&pinctrl_a3>;
+                };
+        };
+        &ref {
+        };
+
+        &spi@1 {
+
+        };
+};
