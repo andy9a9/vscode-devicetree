@@ -120,6 +120,9 @@ class DtsFormatter {
      * Normalize input data - cleanup and convert to consistent format
      */
     private normalizeInput(data: string): string {
+        // Normalize line endings to \n first
+        data = data.replace(/\r\n/g, '\n');
+
         // Normalize labels and node references
         data = data
             .replace(/([\w,-]+)\s*:[\t ]*/g, '$1: ')
