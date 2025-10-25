@@ -34,15 +34,11 @@ Install this extension from the [Visual Studio Code Marketplace](https://marketp
 
 ## Commands
 
-### `DeviceTree: Hello World`
-
-Displays a welcome message (placeholder command for future DeviceTree functionality).
-
 ### `DeviceTree: Validate Syntax` *(Coming Soon)*
 
 Validates DeviceTree syntax and highlights errors.
 
-### `DeviceTree: Format Document` *(Coming Soon)*
+### `DeviceTree: Format Document`
 
 Formats DeviceTree files according to standard conventions.
 
@@ -76,7 +72,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - Check existing issues before creating new ones
 - Describe the use case and expected functionality
 - Include examples of DeviceTree syntax that should be supported
-
 
 ## Changelog
 

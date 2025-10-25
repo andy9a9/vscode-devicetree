@@ -1,5 +1,8 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { DtsFormatter } from '../dts';
 
 suite('DeviceTree Extension Test Suite', () => {
     vscode.window.showInformationMessage('Running DeviceTree extension tests...');
@@ -13,17 +16,6 @@ suite('DeviceTree Extension Test Suite', () => {
         assert.ok(extension);
         await extension?.activate();
         assert.strictEqual(extension?.isActive, true);
-    });
-
-    test('DeviceTree Hello World command should be registered', async () => {
-        const commands = await vscode.commands.getCommands(true);
-        assert.ok(commands.includes('devicetree.helloWorld'));
-    });
-
-    test('DeviceTree Hello World command should execute', async () => {
-        await vscode.commands.executeCommand('devicetree.helloWorld');
-        // Command should execute without throwing
-        assert.ok(true);
     });
 
     suite('Language Support Tests', () => {
@@ -42,6 +34,49 @@ suite('DeviceTree Extension Test Suite', () => {
             });
 
             assert.strictEqual(doc.languageId, 'dts');
+        });
+    });
+
+    suite('Formatter Tests', () => {
+        // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+        function runFormatterTest(useTabs: boolean, expectedFileName: string, testName: string) {
+            const inputPath = path.join(__dirname, '../../src/test/input.dts');
+            // Normalize line endings when reading test files
+            const input = fs.readFileSync(inputPath, 'utf8').replace(/\r\n/g, '\n');
+
+            const tabSize = 8;
+            const maxLineLength = 80;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const outputChannel = { appendLine: () => { } } as any;
+
+            const formatter = new DtsFormatter(useTabs, tabSize, maxLineLength, outputChannel);
+            const [result, formatResult] = formatter.format(input);
+
+            assert.strictEqual(formatResult.success, true, formatResult.message);
+            assert.ok(result.length > 0, 'Formatter should produce output');
+
+            const expectedPath = path.join(__dirname, `../../src/test/${expectedFileName}`);
+            const expected = fs.readFileSync(expectedPath, 'utf8').replace(/\r\n/g, '\n');
+            assert.strictEqual(result.trim(), expected.trim(), `${testName} output does not match expected`);
+        }
+
+        test('preserves unix line endings', () => {
+            const input = '/dts-v1/;\r\n\r\n/ {\r\n\tmodel = "Test";\r\n};';
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const formatter = new DtsFormatter(true, 8, 80, { appendLine: () => {} } as any);
+            const [result, formatResult] = formatter.format(input);
+
+            assert.strictEqual(formatResult.success, true);
+            assert.ok(!result.includes('\r\n'), 'Output should not contain CRLF line endings');
+            assert.ok(result.includes('\n'), 'Output should contain LF line endings');
+        });
+
+        test('formats input.dts with tabs', () => {
+            runFormatterTest(true, 'output-tabs.dts', 'Tab-formatted');
+        });
+
+        test('formats input.dts with spaces', () => {
+            runFormatterTest(false, 'output-spaces.dts', 'Space-formatted');
         });
     });
 });
