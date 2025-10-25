@@ -50,10 +50,23 @@
         "watch-tests": "tsc -p . -w --outDir out"
     },
     "contributes": {
-        "commands": [
+        "configurationDefaults": {
+            "[dts]": {
+                "editor.detectIndentation": false,
+                "editor.insertSpaces": false,
+                "editor.tabSize": 8
+            }
+        },
+        "configuration": [
             {
-                "command": "devicetree.helloWorld",
-                "title": "Hello World"
+                "title": "DeviceTree Language",
+                "properties": {
+                    "devicetree.maxLineLength": {
+                        "type": "number",
+                        "default": 80,
+                        "description": "Maximum line length for DeviceTree files. Lines longer than this will be wrapped."
+                    }
+                }
             }
         ],
         "grammars": [

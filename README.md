@@ -22,7 +22,21 @@ This extension provides comprehensive syntax highlighting for Device Tree Source
 
 *Example of Device Tree file with syntax highlighting enabled*
 
-#### Supported File Extensions
+### Formatting
+
+This extension provides intelligent formatting for Device Tree Source (DTS) files with support for:
+
+- **Automatic indentation**: Proper nesting levels for nodes, properties, and blocks
+- **Line length management**: Configurable maximum line length with smart wrapping
+- **Comment preservation**: Maintains inline and block comments during formatting
+- **Whitespace normalization**: Consistent spacing around operators and delimiters
+- **Property alignment**: Organized layout for property definitions and cell arrays
+
+![Device Tree Formatting](docs/images/formatting.gif)
+
+*Example of Device Tree file before and after formatting*
+
+### Supported File Extensions
 
 - `.dts` - Device Tree Source files
 - `.dtsi` - Device Tree Source Include files
@@ -34,15 +48,11 @@ Install this extension from the [Visual Studio Code Marketplace](https://marketp
 
 ## Commands
 
-### `DeviceTree: Hello World`
-
-Displays a welcome message (placeholder command for future DeviceTree functionality).
-
 ### `DeviceTree: Validate Syntax` *(Coming Soon)*
 
 Validates DeviceTree syntax and highlights errors.
 
-### `DeviceTree: Format Document` *(Coming Soon)*
+### `DeviceTree: Format Document`
 
 Formats DeviceTree files according to standard conventions.
 
@@ -76,7 +86,6 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - Check existing issues before creating new ones
 - Describe the use case and expected functionality
 - Include examples of DeviceTree syntax that should be supported
-
 
 ## Changelog
 

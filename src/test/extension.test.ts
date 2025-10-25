@@ -15,17 +15,6 @@ suite('DeviceTree Extension Test Suite', () => {
         assert.strictEqual(extension?.isActive, true);
     });
 
-    test('DeviceTree Hello World command should be registered', async () => {
-        const commands = await vscode.commands.getCommands(true);
-        assert.ok(commands.includes('devicetree.helloWorld'));
-    });
-
-    test('DeviceTree Hello World command should execute', async () => {
-        await vscode.commands.executeCommand('devicetree.helloWorld');
-        // Command should execute without throwing
-        assert.ok(true);
-    });
-
     suite('Language Support Tests', () => {
         test('DeviceTree language should be registered', () => {
             const languages = vscode.languages.getLanguages();
