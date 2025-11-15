@@ -65,6 +65,11 @@
                         "type": "number",
                         "default": 80,
                         "description": "Maximum line length for DeviceTree files. Lines longer than this will be wrapped."
+                    },
+                    "devicetree.enableWarnings": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable warnings for DeviceTree files. If disabled, only errors will be reported."
                     }
                 }
             }
