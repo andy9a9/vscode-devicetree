@@ -157,7 +157,7 @@ suite('DTS Diagnostics - Real-world Cases', () => {
     test('Should handle typical pinctrl definition', async () => {
         const input = `pinctrl_spec: specGrp {
 \tfsl,pins =
-\t\t<MX8MP_IOMUXC_SAI2_TXFS__GPIO4_IO24\t0x116>,\t/* short comment */
+\t\t<MX8MP_IOMUXC_SAI2_TXFS__GPIO4_IO24\t0x116>,\t/* comment */
 \t\t<MX8MP_IOMUXC_SAI1_RXC__GPIO4_IO01\t0x006>;
 };`;
         const diagnostics = await getDiagnostics(input);
