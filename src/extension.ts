@@ -1,26 +1,89 @@
+'use strict';
+
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+// Import the formatter and diagnostics providers
+import { DtsFormatterProvider } from './formatter';
+import { DtsDiagnosticsProvider } from './diagnostics';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+// Global diagnostics provider instance
+let diagnosticsProvider: DtsDiagnosticsProvider | undefined;
+
+/**
+ * Activate the extension
+ * This method is called when your extension is activated
+ * @param context The extension context
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function activate(context: vscode.ExtensionContext) {
+    // Get configuration
+    const config = vscode.workspace.getConfiguration('devicetree');
+    const maxLineLength = config.get<number>('maxLineLength', 80);
+    const enableWarnings = config.get<boolean>('enableWarnings', true);
 
-    // Use the console to output diagnostic information (console.log) and errors (console.error)
-    // This line of code will only be executed once when your extension is activated
-    console.log('Congratulations, your extension "devicetree" is now active!');
+    // Create diagnostics provider
+    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength);
 
-    // The command has been defined in the package.json file
-    // Now provide the implementation of the command with registerCommand
-    // The commandId parameter must match the command field in package.json
-    const disposable = vscode.commands.registerCommand('devicetree.helloWorld', () => {
-        // The code you place here will be executed every time your command is executed
-        // Display a message box to the user
-        vscode.window.showInformationMessage('Hello World from DeviceTree!');
-    });
+    // Register the formatter provider
+    context.subscriptions.push(
+        vscode.languages.registerDocumentFormattingEditProvider('dts', new DtsFormatterProvider(maxLineLength))
+    );
 
-    context.subscriptions.push(disposable);
+    // Register diagnostics provider
+    context.subscriptions.push(diagnosticsProvider);
+    if (enableWarnings) {
+        // Listen for document changes
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeTextDocument(event => {
+                if (event.document.languageId === 'dts' && diagnosticsProvider) {
+                    // Debounce: analyze after a short delay to avoid excessive analysis
+                    setTimeout(() => {
+                        diagnosticsProvider?.analyzeDocument(event.document);
+                    }, 500);
+                }
+            })
+        );
+
+        // Listen for text editor options changes (e.g., when tab size changes in the editor)
+        context.subscriptions.push(
+            vscode.window.onDidChangeTextEditorOptions(event => {
+                const document = event.textEditor.document;
+                if (document.languageId === 'dts' && diagnosticsProvider) {
+                    diagnosticsProvider.analyzeDocument(document);
+                }
+            })
+        );
+
+        // Listen for document opens
+        context.subscriptions.push(
+            vscode.workspace.onDidOpenTextDocument(document => {
+                if (document.languageId === 'dts' && diagnosticsProvider) {
+                    diagnosticsProvider.analyzeDocument(document);
+                }
+            })
+        );
+
+        // Listen for document closes
+        context.subscriptions.push(
+            vscode.workspace.onDidCloseTextDocument(document => {
+                if (document.languageId === 'dts' && diagnosticsProvider) {
+                    diagnosticsProvider.clearDocument(document);
+                }
+            })
+        );
+
+    }
 }
 
-// This method is called when your extension is deactivated
-export function deactivate() { }
+/**
+ * Deactivate the extension
+ * This method is called when your extension is deactivated
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function deactivate() {
+    if (diagnosticsProvider) {
+        diagnosticsProvider.dispose();
+        diagnosticsProvider = undefined;
+    }
+}
