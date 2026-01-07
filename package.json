@@ -1,7 +1,7 @@
 {
     "name": "vscode-devicetree",
     "displayName": "VSCode DeviceTree",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "description": "DeviceTree Language Support for Visual Studio Code",
     "publisher": "andy9a9",
     "keywords": [
