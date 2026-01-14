@@ -20,10 +20,11 @@ export function activate(context: vscode.ExtensionContext) {
     // Get configuration
     const config = vscode.workspace.getConfiguration('devicetree');
     const maxLineLength = config.get<number>('maxLineLength', 80);
-    const enableWarnings = config.get<boolean>('enableWarnings', true);
+    const enableWarnings = config.get<boolean>('diagnostics.enableWarnings', true);
+    const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
 
     // Create diagnostics provider
-    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength);
+    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength, includeComments);
 
     // Register the formatter provider
     context.subscriptions.push(
@@ -72,7 +73,6 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             })
         );
-
     }
 }
 
