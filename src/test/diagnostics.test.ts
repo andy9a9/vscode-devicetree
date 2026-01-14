@@ -107,6 +107,15 @@ suite('DTS Diagnostics - Line Length', () => {
     });
 });
 
+suite('DTS Diagnostics - Comment Handling', () => {
+    test('Should include comments in line length by default', async () => {
+        const input = '/ {\n\tmodel = "Test";\t\t\t\t\t/* This is a very long comment that makes the line exceed 80 characters */\n};';
+        const diagnostics = await getDiagnostics(input);
+        assert.ok(diagnostics.length > 0);
+        assert.ok(diagnostics[0].message.includes('exceeds maximum length'));
+    });
+});
+
 suite('DTS Diagnostics - Configuration', () => {
     test('Should use configured maxLineLength on startup', async () => {
         // Note: The maxLineLength is read once when the extension activates
@@ -130,11 +139,11 @@ suite('DTS Diagnostics - Configuration', () => {
 
     test('Should be disabled when enableWarnings is false', async () => {
         const config = vscode.workspace.getConfiguration('devicetree');
-        const originalEnableWarnings = config.get<boolean>('enableWarnings', true);
+        const originalEnableWarnings = config.get<boolean>('diagnostics.enableWarnings', true);
 
         try {
             // Disable warnings
-            await config.update('enableWarnings', false, vscode.ConfigurationTarget.Global);
+            await config.update('diagnostics.enableWarnings', false, vscode.ConfigurationTarget.Global);
             
             // Reload extension or wait for config to apply
             await new Promise(resolve => setTimeout(resolve, 200));
@@ -148,7 +157,7 @@ suite('DTS Diagnostics - Configuration', () => {
             assert.ok(diagnostics.length >= 0); // Just verify it doesn't crash
         } finally {
             // Restore original setting
-            await config.update('enableWarnings', originalEnableWarnings, vscode.ConfigurationTarget.Global);
+            await config.update('diagnostics.enableWarnings', originalEnableWarnings, vscode.ConfigurationTarget.Global);
         }
     });
 });
