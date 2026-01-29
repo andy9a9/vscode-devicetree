@@ -115,6 +115,49 @@ suite('DTS Diagnostics - Comment Handling', () => {
         assert.ok(diagnostics[0].message.includes('exceeds maximum length'));
     });
 
+    test('Should handle multi-line block comments correctly', async () => {
+        // When lineLengthIncludeComments is false, lines inside a multi-line block comment
+        // should be recognized as comment-only lines and not trigger warnings
+        const config = vscode.workspace.getConfiguration('devicetree');
+        const original = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
+
+        try {
+            await config.update('diagnostics.lineLengthIncludeComments', false, vscode.ConfigurationTarget.Global);
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            const input = `/ {
+\t/*
+\t * This is a very long comment line inside a multi-line block comment that exceeds 80 characters
+\t */
+\tmodel = "Test";
+};`;
+            const diagnostics = await getDiagnostics(input);
+            // Should NOT warn because the long line is inside a block comment
+            assert.strictEqual(diagnostics.length, 0);
+        } finally {
+            await config.update('diagnostics.lineLengthIncludeComments', original, vscode.ConfigurationTarget.Global);
+        }
+    });
+
+    test('Should not treat comment-like content inside strings as comments', async () => {
+        const config = vscode.workspace.getConfiguration('devicetree');
+        const original = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
+
+        try {
+            await config.update('diagnostics.lineLengthIncludeComments', false, vscode.ConfigurationTarget.Global);
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // The string contains "// " which looks like a comment but isn't
+            // A very long URL that makes the line exceed 80 chars
+            const input = '/ {\n\turl = "https://example.com/very/long/path/that/exceeds/the/maximum/line/length";\n};';
+            const diagnostics = await getDiagnostics(input);
+            // Should warn because the string content is NOT a comment
+            assert.ok(diagnostics.length > 0);
+        } finally {
+            await config.update('diagnostics.lineLengthIncludeComments', original, vscode.ConfigurationTarget.Global);
+        }
+    });
+
     test('Should exclude comments when lineLengthIncludeComments is false', async () => {
         const config = vscode.workspace.getConfiguration('devicetree');
         const original = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
