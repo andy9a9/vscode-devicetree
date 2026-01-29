@@ -20,10 +20,11 @@ export function activate(context: vscode.ExtensionContext) {
     // Get configuration
     const config = vscode.workspace.getConfiguration('devicetree');
     const maxLineLength = config.get<number>('maxLineLength', 80);
-    const enableWarnings = config.get<boolean>('enableWarnings', true);
+    const enableWarnings = config.get<boolean>('diagnostics.enableWarnings', true);
+    const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
 
     // Create diagnostics provider
-    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength);
+    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength, includeComments);
 
     // Register the formatter provider
     context.subscriptions.push(
@@ -73,6 +74,27 @@ export function activate(context: vscode.ExtensionContext) {
             })
         );
 
+        // Listen for configuration changes
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                if (event.affectsConfiguration('devicetree')) {
+                    const newConfig = vscode.workspace.getConfiguration('devicetree');
+                    const newMaxLineLength = newConfig.get<number>('maxLineLength', 80);
+                    const newIncludeComments = newConfig.get<boolean>('diagnostics.lineLengthIncludeComments', true);
+
+                    if (diagnosticsProvider) {
+                        diagnosticsProvider.updateSettings(newMaxLineLength, newIncludeComments);
+
+                        // Re-analyze all open DTS documents with new settings
+                        vscode.workspace.textDocuments.forEach(document => {
+                            if (document.languageId === 'dts') {
+                                diagnosticsProvider?.analyzeDocument(document);
+                            }
+                        });
+                    }
+                }
+            })
+        );
     }
 }
 

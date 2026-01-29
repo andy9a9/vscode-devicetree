@@ -7,11 +7,13 @@ import * as vscode from 'vscode';
 export class DtsDiagnosticsProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private maxLineLength: number;
+    private includeComments: boolean;
     private tabSize: number;
 
-    constructor(maxLineLength: number) {
+    constructor(maxLineLength: number, includeComments: boolean) {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection('devicetree');
         this.maxLineLength = maxLineLength + 1;
+        this.includeComments = includeComments;
 
         // Read tabSize from editor configuration
         const editorConfig = vscode.workspace.getConfiguration('editor');
@@ -37,6 +39,21 @@ export class DtsDiagnosticsProvider {
     }
 
     /**
+     * Remove comments from a line for length calculation
+     * @param line The line to process
+     * @returns The line with comments removed
+     */
+    private removeComments(line: string): string {
+        // Remove line comments (// ...)
+        let result = line.replace(/\/\/.*$/, '');
+
+        // Remove block comments (/* ... */)
+        result = result.replace(/\/\*.*?\*\//g, '');
+
+        return result.trimEnd();
+    }
+
+    /**
      * Check for lines exceeding maximum length
      * @param document The document to check
      * @returns Array of diagnostics for lines exceeding maximum length
@@ -47,7 +64,10 @@ export class DtsDiagnosticsProvider {
         const lines = text.split('\n');
 
         lines.forEach((line, index) => {
-            const visualLength = this.calculateVisualLength(line);
+            // Calculate length based on configuration
+            const lineToCheck = this.includeComments ? line : this.removeComments(line);
+            const visualLength = this.calculateVisualLength(lineToCheck);
+
             if (visualLength > this.maxLineLength) {
                 const range = new vscode.Range(index, 0, index, Number.MAX_VALUE);
                 const diagnostic = new vscode.Diagnostic(
@@ -95,6 +115,16 @@ export class DtsDiagnosticsProvider {
      */
     public clearDocument(document: vscode.TextDocument): void {
         this.diagnosticCollection.delete(document.uri);
+    }
+
+    /**
+     * Update configuration settings
+     * @param maxLineLength The new maximum line length
+     * @param includeComments Whether to include comments in line length calculation
+     */
+    public updateSettings(maxLineLength: number, includeComments: boolean): void {
+        this.maxLineLength = maxLineLength + 1;
+        this.includeComments = includeComments;
     }
 
     /**
