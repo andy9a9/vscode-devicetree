@@ -73,6 +73,28 @@ export function activate(context: vscode.ExtensionContext) {
                 }
             })
         );
+
+        // Listen for configuration changes
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(event => {
+                if (event.affectsConfiguration('devicetree')) {
+                    const newConfig = vscode.workspace.getConfiguration('devicetree');
+                    const newMaxLineLength = newConfig.get<number>('maxLineLength', 80);
+                    const newIncludeComments = newConfig.get<boolean>('diagnostics.lineLengthIncludeComments', true);
+
+                    if (diagnosticsProvider) {
+                        diagnosticsProvider.updateSettings(newMaxLineLength, newIncludeComments);
+
+                        // Re-analyze all open DTS documents with new settings
+                        vscode.workspace.textDocuments.forEach(document => {
+                            if (document.languageId === 'dts') {
+                                diagnosticsProvider?.analyzeDocument(document);
+                            }
+                        });
+                    }
+                }
+            })
+        );
     }
 }
 

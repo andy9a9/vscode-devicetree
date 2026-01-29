@@ -118,6 +118,16 @@ export class DtsDiagnosticsProvider {
     }
 
     /**
+     * Update configuration settings
+     * @param maxLineLength The new maximum line length
+     * @param includeComments Whether to include comments in line length calculation
+     */
+    public updateSettings(maxLineLength: number, includeComments: boolean): void {
+        this.maxLineLength = maxLineLength + 1;
+        this.includeComments = includeComments;
+    }
+
+    /**
      * Dispose the diagnostic collection
      */
     public dispose(): void {
