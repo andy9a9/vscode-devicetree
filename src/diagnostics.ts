@@ -21,6 +21,16 @@ export class DtsDiagnosticsProvider {
     }
 
     /**
+     * Update configuration settings
+     * @param maxLineLength The new maximum line length
+     * @param includeComments Whether to include comments in line length calculation
+     */
+    updateSettings(maxLineLength: number, includeComments: boolean): void {
+        this.maxLineLength = maxLineLength + 1;
+        this.includeComments = includeComments;
+    }
+
+    /**
      * Calculate visual length of a line considering tab stops
      * @param line The line to calculate the visual length for
      * @returns The visual length of the line
