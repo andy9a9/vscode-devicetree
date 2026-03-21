@@ -7,15 +7,27 @@ import * as vscode from 'vscode';
 export class DtsDiagnosticsProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private maxLineLength: number;
+    private includeComments: boolean;
     private tabSize: number;
 
-    constructor(maxLineLength: number) {
+    constructor(maxLineLength: number, includeComments: boolean) {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection('devicetree');
         this.maxLineLength = maxLineLength + 1;
+        this.includeComments = includeComments;
 
         // Read tabSize from editor configuration
         const editorConfig = vscode.workspace.getConfiguration('editor');
         this.tabSize = editorConfig.get<number>('tabSize', 8);
+    }
+
+    /**
+     * Update configuration settings
+     * @param maxLineLength The new maximum line length
+     * @param includeComments Whether to include comments in line length calculation
+     */
+    updateSettings(maxLineLength: number, includeComments: boolean): void {
+        this.maxLineLength = maxLineLength + 1;
+        this.includeComments = includeComments;
     }
 
     /**
@@ -37,6 +49,43 @@ export class DtsDiagnosticsProvider {
     }
 
     /**
+     * Remove comments from a line for length calculation
+     * @param line The line to process
+     * @param inBlockComment Whether we're currently inside a multi-line block comment
+     * @returns Object with the line with comments removed and whether we're still in a block comment
+     */
+    private removeComments(line: string, inBlockComment: boolean): { line: string; inBlockComment: boolean } {
+        // Handle multi-line block comment continuation
+        if (inBlockComment) {
+            const endComment = line.indexOf('*/');
+            if (endComment !== -1) {
+                line = line.substring(endComment + 2);
+                inBlockComment = false;
+            } else {
+                return { line: '', inBlockComment: true };
+            }
+        }
+
+        // Match strings (double/single quoted) or comments
+        // Process in order: strings are kept, comments are removed
+        const regex = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\/\*[\s\S]*?\*\/|\/\*[\s\S]*|\/\/.*/g;
+
+        const result = line.replace(regex, (match) => {
+            // Keep strings (start with " or ')
+            if (match[0] === '"' || match[0] === "'") {
+                return match;
+            }
+            // Block comment that doesn't close - set flag and remove rest of line
+            if (match.startsWith('/*') && !match.endsWith('*/')) {
+                inBlockComment = true;
+            }
+            return '';
+        });
+
+        return { line: result.trimEnd(), inBlockComment };
+    }
+
+    /**
      * Check for lines exceeding maximum length
      * @param document The document to check
      * @returns Array of diagnostics for lines exceeding maximum length
@@ -45,9 +94,22 @@ export class DtsDiagnosticsProvider {
         const diagnostics: vscode.Diagnostic[] = [];
         const text = document.getText();
         const lines = text.split('\n');
+        let inBlockComment = false;
 
         lines.forEach((line, index) => {
-            const visualLength = this.calculateVisualLength(line);
+            // Calculate length based on configuration
+            let lineToCheck: string;
+
+            if (this.includeComments) {
+                lineToCheck = line;
+            } else {
+                const result = this.removeComments(line, inBlockComment);
+                lineToCheck = result.line;
+                inBlockComment = result.inBlockComment;
+            }
+
+            const visualLength = this.calculateVisualLength(lineToCheck);
+
             if (visualLength > this.maxLineLength) {
                 const range = new vscode.Range(index, 0, index, Number.MAX_VALUE);
                 const diagnostic = new vscode.Diagnostic(

@@ -515,6 +515,14 @@ export class DtsFormatterProvider implements vscode.DocumentFormattingEditProvid
     }
 
     /**
+     * Update configuration settings
+     * @param maxLineLength The new maximum line length
+     */
+    updateSettings(maxLineLength: number): void {
+        this.maxLineLength = maxLineLength;
+    }
+
+    /**
      * Provide formatting edits for a document
      * @param document The document to format
      * @param options Formatting options from VS Code
