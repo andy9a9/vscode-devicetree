@@ -4,10 +4,12 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 // Import the formatter and diagnostics providers
-import { DtsFormatterProvider } from './formatter';
+import { DtsDocumentLinkProvider } from './links';
 import { DtsDiagnosticsProvider } from './diagnostics';
+import { DtsFormatterProvider } from './formatter';
 
 // Global provider instances
+let linkProvider: DtsDocumentLinkProvider | undefined;
 let diagnosticsProvider: DtsDiagnosticsProvider | undefined;
 let formatterProvider: DtsFormatterProvider | undefined;
 
@@ -23,10 +25,16 @@ export function activate(context: vscode.ExtensionContext) {
     const maxLineLength = config.get<number>('maxLineLength', 80);
     const enableWarnings = config.get<boolean>('diagnostics.enableWarnings', true);
     const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
+    const includeSearchPaths = config.get<string[]>('includeSearchPaths', ['include', 'include/dt-bindings']);
 
     // Create providers
-    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength, includeComments);
+    linkProvider = new DtsDocumentLinkProvider(includeSearchPaths);
+    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength, includeComments, linkProvider);
     formatterProvider = new DtsFormatterProvider(maxLineLength);
+
+    context.subscriptions.push(
+        vscode.languages.registerDocumentLinkProvider('dts', linkProvider)
+    );
 
     context.subscriptions.push(
         vscode.languages.registerDocumentFormattingEditProvider('dts', formatterProvider)
@@ -78,10 +86,16 @@ export function activate(context: vscode.ExtensionContext) {
                 const config = vscode.workspace.getConfiguration('devicetree');
                 const maxLineLength = config.get<number>('maxLineLength', 80);
                 const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
+                const includeSearchPaths = config.get<string[]>('includeSearchPaths', ['include', 'include/dt-bindings']);
 
                 // Update formatter settings
                 if (formatterProvider) {
                     formatterProvider.updateSettings(maxLineLength);
+                }
+
+                // Update link provider search paths
+                if (linkProvider) {
+                    linkProvider.updateSearchPaths(includeSearchPaths);
                 }
 
                 // Update diagnostics settings
@@ -113,5 +127,8 @@ export function deactivate() {
     if (diagnosticsProvider) {
         diagnosticsProvider.dispose();
         diagnosticsProvider = undefined;
+    }
+    if (linkProvider) {
+        linkProvider = undefined;
     }
 }

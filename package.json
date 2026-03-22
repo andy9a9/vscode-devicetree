@@ -41,7 +41,7 @@
     "scripts": {
         "compile": "webpack",
         "compile-tests": "tsc -p . --outDir out",
-        "lint": "eslint src",
+        "lint": "eslint src --max-warnings 0",
         "package": "webpack --mode production --devtool hidden-source-map",
         "pretest": "npm run compile-tests && npm run compile && npm run lint",
         "test": "vscode-test",
@@ -61,11 +61,6 @@
             {
                 "title": "DeviceTree Language",
                 "properties": {
-                    "devicetree.maxLineLength": {
-                        "type": "number",
-                        "default": 80,
-                        "description": "Maximum line length for DeviceTree files. Lines longer than this will be wrapped."
-                    },
                     "devicetree.diagnostics.enableWarnings": {
                         "type": "boolean",
                         "default": true,
@@ -75,6 +70,22 @@
                         "type": "boolean",
                         "default": true,
                         "markdownDescription": "Include comments when calculating line length for warnings."
+                    },
+                    "devicetree.includeSearchPaths": {
+                        "type": "array",
+                        "default": [
+                            "include",
+                            "include/dt-bindings"
+                        ],
+                        "description": "Additional directories to search for included files (relative to workspace root).",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "devicetree.maxLineLength": {
+                        "type": "number",
+                        "default": 80,
+                        "description": "Maximum line length for DeviceTree files. Lines longer than this will be wrapped."
                     }
                 }
             }

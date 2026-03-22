@@ -1,4 +1,6 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import { DtsDocumentLinkProvider, parseIncludes } from './links';
 
 /**
  * Provider for DeviceTree diagnostic warnings
@@ -7,13 +9,15 @@ import * as vscode from 'vscode';
 export class DtsDiagnosticsProvider {
     private diagnosticCollection: vscode.DiagnosticCollection;
     private maxLineLength: number;
-    private includeComments: boolean;
     private tabSize: number;
+    private includeComments: boolean;
+    private linkProvider: DtsDocumentLinkProvider;
 
-    constructor(maxLineLength: number, includeComments: boolean) {
+    constructor(maxLineLength: number, includeComments: boolean, linkProvider: DtsDocumentLinkProvider) {
         this.diagnosticCollection = vscode.languages.createDiagnosticCollection('devicetree');
         this.maxLineLength = maxLineLength + 1;
         this.includeComments = includeComments;
+        this.linkProvider = linkProvider;
 
         // Read tabSize from editor configuration
         const editorConfig = vscode.workspace.getConfiguration('editor');
@@ -126,10 +130,50 @@ export class DtsDiagnosticsProvider {
     }
 
     /**
+     * Check for missing include files
+     * @param document The document to check
+     * @returns Array of diagnostics for missing include files
+     */
+    private async checkIncludeFiles(
+        document: vscode.TextDocument,
+    ): Promise<vscode.Diagnostic[]> {
+        const diagnostics: vscode.Diagnostic[] = [];
+        const includes = parseIncludes(document);
+        const currentFileDir = path.dirname(document.uri.fsPath);
+
+        for (const include of includes) {
+            // Check if file exists
+            const targetUri = await this.linkProvider.findIncludedFile(
+                include.path,
+                currentFileDir
+            );
+
+            if (!targetUri) {
+                const range = new vscode.Range(
+                    new vscode.Position(include.line, include.startChar),
+                    new vscode.Position(include.line, include.endChar)
+                );
+                const diagnostic = new vscode.Diagnostic(
+                    range,
+                    `Include file "${include.path}" was not found.\n` +
+                    `Update the 'includeSearchPaths' settings for new location to search.`,
+                    vscode.DiagnosticSeverity.Warning
+                );
+                diagnostic.source = 'DeviceTree';
+                diagnostics.push(diagnostic);
+            }
+        }
+
+        return diagnostics;
+    }
+
+    /**
      * Analyze a document and update diagnostics
      * @param document The document to analyze
      */
-    public analyzeDocument(document: vscode.TextDocument): void {
+    public async analyzeDocument(
+        document: vscode.TextDocument
+    ): Promise<void> {
         if (document.languageId !== 'dts') {
             return;
         }
@@ -143,10 +187,15 @@ export class DtsDiagnosticsProvider {
             this.tabSize = editor.options.tabSize as number;
         }
 
+        // Run all diagnostic checks
         const diagnostics: vscode.Diagnostic[] = [];
 
-        // Run all diagnostic checks, currently only line length
+        // Check line length
         diagnostics.push(...this.checkLineLength(document));
+
+        // Check include files
+        const includeDiagnostics = await this.checkIncludeFiles(document);
+        diagnostics.push(...includeDiagnostics);
 
         this.diagnosticCollection.set(document.uri, diagnostics);
     }

@@ -36,6 +36,21 @@ This extension provides intelligent formatting for Device Tree Source (DTS) file
 
 *Example of Device Tree file before and after formatting*
 
+### Include File Navigation
+
+This extension provides intelligent navigation for `#include` directives with support for:
+
+- **Go to definition**: Ctrl+Click on include paths to jump to the file
+- **Smart file resolution**: Automatically searches multiple locations:
+  - Relative to current file
+  - Workspace root
+  - `arch/*/boot/dts/` directories (Linux kernel structure)
+  - `arch/*/dts/` directories (U-Boot structure)
+  - Configurable custom search paths
+- **Visual feedback**: Include paths are underlined when the file is found
+- **Diagnostic warnings**: Missing include files are highlighted with warnings
+- **Configurable search paths**: Add custom directories via `devicetree.includeSearchPaths` setting
+
 ### Supported File Extensions
 
 - `.dts` - Device Tree Source files
