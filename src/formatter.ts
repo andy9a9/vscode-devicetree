@@ -81,9 +81,52 @@ class DtsFormatter {
         // Normalize line endings first
         data = data.replace(/\r\n/g, '\n');
 
-        // Normalize labels and node references
+        // Normalize labels (but not inside quoted strings)
+        // Split by strings, process parts outside strings, then rejoin
+        data = data.split('\n').map(line => {
+            // Split line into string and non-string parts
+            const parts: string[] = [];
+            const stringParts: boolean[] = [];
+            let lastIndex = 0;
+
+            // Find all quoted strings
+            const stringRegex = /"(?:[^"\\]|\\.)*"/g;
+            let match;
+
+            while ((match = stringRegex.exec(line)) !== null) {
+                // Add part before string
+                if (match.index > lastIndex) {
+                    parts.push(line.substring(lastIndex, match.index));
+                    stringParts.push(false);
+                }
+                // Add the string itself
+                parts.push(match[0]);
+                stringParts.push(true);
+                lastIndex = match.index + match[0].length;
+            }
+
+            // Add remaining part after last string
+            if (lastIndex < line.length) {
+                parts.push(line.substring(lastIndex));
+                stringParts.push(false);
+            }
+
+            // Process non-string parts to normalize colons in labels
+            const processed = parts.map((part, index) => {
+                if (stringParts[index]) {
+                    // Inside string - don't modify
+                    return part;
+                }
+                // Outside string - normalize label colons
+                // Match word (label) followed by colon and optional whitespace
+                return part.replace(/([\w,-]+):\s*/g, '$1: ');
+            });
+
+            return processed.join('');
+        }).join('\n');
+
+        // Normalize node references and addresses
         data = data
-            .replace(/([\w,-]+)\s*:[\t ]*/g, '$1: ')
             .replace(/(&[\w,-]+)\s*{[\t ]*/g, '$1 {')
             .replace(/([\w,-]+)\s*@\s*0*([\da-fA-F]+)\s*{[\t ]*/g, '$1@$2 {')
             .replace(/([\w,-]+)\s+{/g, '$1 {');

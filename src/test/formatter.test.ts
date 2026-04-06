@@ -407,4 +407,11 @@ pinctrl-0 = <&pinctrl_uart>;
         assert.ok(result.includes('uart_pins: uart-pins {'));
         assert.ok(result.includes('function = "uart"'));
     });
+
+    test('Should preserve strings with colons', async () => {
+        const input = '/ {\n\tlabel = "yellow:status";\n};';
+        const result = await formatDocument(input);
+        assert.ok(result.includes('"yellow:status"'), 'String content should not be modified');
+        assert.ok(!result.includes('"yellow: status"'), 'Colon in string should not have space added');
+    });
 });
