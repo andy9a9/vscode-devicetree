@@ -9,9 +9,7 @@ suiteSetup(async () => {
     }
 });
 
-/**
- * Helper function to get diagnostics for a document
- */
+// Helper function to get diagnostics for a document
 async function getDiagnostics(content: string): Promise<vscode.Diagnostic[]> {
     const doc = await vscode.workspace.openTextDocument({
         language: 'dts',
