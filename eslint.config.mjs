@@ -55,4 +55,10 @@ export default [{
         "max-lines-per-function": ["warn", { max: 100, skipBlankLines: true, skipComments: true }],
         complexity: ["warn", 15],
     },
+}, {
+    // Test files are allowed to have long functions (test suites are naturally large)
+    files: ["**/*.test.ts"],
+    rules: {
+        "max-lines-per-function": "off",
+    },
 }];
