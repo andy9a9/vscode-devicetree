@@ -81,9 +81,52 @@ class DtsFormatter {
         // Normalize line endings first
         data = data.replace(/\r\n/g, '\n');
 
-        // Normalize labels and node references
+        // Normalize labels (but not inside quoted strings)
+        // Split by strings, process parts outside strings, then rejoin
+        data = data.split('\n').map(line => {
+            // Split line into string and non-string parts
+            const parts: string[] = [];
+            const stringParts: boolean[] = [];
+            let lastIndex = 0;
+
+            // Find all quoted strings
+            const stringRegex = /"(?:[^"\\]|\\.)*"/g;
+            let match;
+
+            while ((match = stringRegex.exec(line)) !== null) {
+                // Add part before string
+                if (match.index > lastIndex) {
+                    parts.push(line.substring(lastIndex, match.index));
+                    stringParts.push(false);
+                }
+                // Add the string itself
+                parts.push(match[0]);
+                stringParts.push(true);
+                lastIndex = match.index + match[0].length;
+            }
+
+            // Add remaining part after last string
+            if (lastIndex < line.length) {
+                parts.push(line.substring(lastIndex));
+                stringParts.push(false);
+            }
+
+            // Process non-string parts to normalize colons in labels
+            const processed = parts.map((part, index) => {
+                if (stringParts[index]) {
+                    // Inside string - don't modify
+                    return part;
+                }
+                // Outside string - normalize label colons
+                // Match word (label) followed by colon and optional whitespace
+                return part.replace(/([\w,-]+):\s*/g, '$1: ');
+            });
+
+            return processed.join('');
+        }).join('\n');
+
+        // Normalize node references and addresses
         data = data
-            .replace(/([\w,-]+)\s*:[\t ]*/g, '$1: ')
             .replace(/(&[\w,-]+)\s*{[\t ]*/g, '$1 {')
             .replace(/([\w,-]+)\s*@\s*0*([\da-fA-F]+)\s*{[\t ]*/g, '$1@$2 {')
             .replace(/([\w,-]+)\s+{/g, '$1 {');
@@ -182,23 +225,76 @@ class DtsFormatter {
 
     /**
      * Parse comma-separated values while preserving comments
+     * Handles both comma-separated (< val1 >, < val2 >) and whitespace-separated (< val1 val2 >)
      * @param val The value string to parse
      * @returns Array of parsed values with comments preserved
      */
     private parseCommaSeparatedValues(val: string): string[] {
-        const regex = /((?:".*?"|<.*?>|\[.*?\]|[^,])+?,?)([ \t]*(?:\/\/.*|\/\*.*?\*\/)?)?/gm;
+        const trimmed = val.trim();
+
+        // Check if this is whitespace-separated (no commas outside of parentheses/brackets)
+        // Pattern: < val1 val2 val3 > or values with function calls like PDO_FIXED(...)
+        const hasCommas = this.hasSignificantCommas(trimmed);
+        if (!hasCommas) {
+            return trimmed.trim() ? [trimmed] : [];
+        }
+
+        // Comma-separated values - use the original logic
+        const regex = /((?:".*?"|<[^>]*>|\[[^\]]*\]|[^,])+)(,?)([ \t]*(?:\/\/.*|\/\*.*?\*\/)?)?/g;
         const values: string[] = [];
         let entry: RegExpExecArray | null;
 
-        while ((entry = regex.exec(val)) !== null) {
-            const valuePart = entry[1].trimEnd();
-            const commentPart = entry[2]?.trimEnd() ?? '';
+        while ((entry = regex.exec(trimmed)) !== null) {
+            const valuePart = entry[1].trim();
+            const comma = entry[2];
+            const commentPart = entry[3]?.trim() ?? '';
+
             if (valuePart || commentPart) {
-                values.push(valuePart + (commentPart ? ' ' + commentPart : ''));
+                const fullValue = valuePart + comma + (commentPart ? ' ' + commentPart : '');
+                values.push(fullValue);
             }
         }
 
         return values;
+    }
+
+    /**
+     * Check if a value string has commas that act as value separators (i.e. are not
+     * nested inside parentheses or angle-bracket groups).
+     *
+     * Significant (separating) commas:
+     *   `<&clk1>, <&clk2>`          — comma between two `<...>` entries
+     *   `"a", "b"`                  — comma between two string literals
+     *
+     * Non-significant (nested) commas:
+     *   `<PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>` — commas inside `(...)` at depth > 1
+     *   `< 0 1 2 3 >`               — no commas at all; whitespace-separated array
+     *
+     * @param val The value string to check (typically the right-hand side of a `=`)
+     * @returns True if at least one comma separates top-level values
+     */
+    private hasSignificantCommas(val: string): boolean {
+        let depth = 0;
+        let inString = false;
+
+        for (let i = 0; i < val.length; i++) {
+            const char = val[i];
+
+            if (char === '"' && (i === 0 || val[i - 1] !== '\\')) {
+                inString = !inString;
+            } else if (!inString) {
+                if (char === '(' || char === '[' || char === '<') {
+                    depth++;
+                } else if (char === ')' || char === ']' || char === '>') {
+                    depth--;
+                } else if (char === ',' && depth <= 1) {
+                    // Found a comma at top level or just inside the outer brackets
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -380,13 +476,106 @@ class DtsFormatter {
      */
     private calculateValueAlignment(indentation: string, prop: string): string {
         const start = `${indentation}${prop} = `;
-        const eqPos = this.replaceTabsWithSpaces(start).length;
-        const tabCount = Math.floor(eqPos / this.tabSize);
-        const spaceCount = eqPos % this.tabSize;
+        return this.calculateAlignmentForColumn(this.replaceTabsWithSpaces(start).length);
+    }
 
+    /**
+     * Align text to a specific column based on current indentation and tab settings
+     * @param col Target column for alignment
+     * @returns String of tabs and/or spaces to reach the target column
+     */
+    private calculateAlignmentForColumn(col: number): string {
         return this.useTabs
-            ? '\t'.repeat(tabCount) + ' '.repeat(spaceCount)
-            : ' '.repeat(eqPos);
+            ? '\t'.repeat(Math.floor(col / this.tabSize)) + ' '.repeat(col % this.tabSize)
+            : ' '.repeat(col);
+    }
+
+    /**
+     * Format whitespace-separated content lines with column alignment
+     * @param lines Content lines to format
+     * @param baseIndent Base indentation for each line
+     * @returns Formatted lines with column alignment
+     */
+    private formatWhitespaceSeparatedLines(lines: string[], baseIndent: string): string[] {
+        if (lines.length === 0) {
+            return [];
+        }
+
+        type CommentLine = { isComment: true; raw: string };
+        type EntryLine = { isComment: false; key: string; value: string; suffix: string };
+        type ParsedLine = CommentLine | EntryLine;
+
+        // Parse each line: comment-only lines are preserved as-is; entry lines are split
+        // into key, value, and optional trailing suffix (e.g. inline /* comment */).
+        const parsedLines: ParsedLine[] = lines.map(line => {
+            const trimmed = line.trim();
+            // Lines that are purely comment content (block or line comments)
+            if (/^(\/\*|\*|\/\/)/.test(trimmed)) {
+                return { isComment: true, raw: trimmed } as CommentLine;
+            }
+            // Split into key / value / optional trailing suffix
+            const firstSpace = trimmed.search(/\s+/);
+            if (firstSpace < 0) {
+                return { isComment: true, raw: trimmed } as CommentLine;
+            }
+            const key = trimmed.slice(0, firstSpace);
+            const afterKey = trimmed.slice(firstSpace).trimStart();
+            const secondSpace = afterKey.search(/\s/);
+            if (secondSpace < 0) {
+                return { isComment: false, key, value: afterKey, suffix: '' } as EntryLine;
+            }
+            return {
+                isComment: false,
+                key,
+                value: afterKey.slice(0, secondSpace),
+                suffix: afterKey.slice(secondSpace),   // leading whitespace preserved
+            } as EntryLine;
+        });
+
+        const entryLines = parsedLines.filter((p): p is EntryLine => !p.isComment);
+
+        // All non-comment lines must have a value for column alignment to make sense.
+        // Also skip if any key looks like a function call or value contains a comma —
+        // that indicates content like PDO_FIXED(5000, 3000, ...) rather than PIN HEX pairs.
+        const shouldAlign = entryLines.length > 0 && entryLines.every(
+            p => p.value !== '' && !p.key.includes('(') && !p.value.includes(',')
+        );
+        if (!shouldAlign) {
+            return lines.map(line => baseIndent + line.trim());
+        }
+
+        // Skip alignment for purely numeric arrays (e.g. brightness-levels)
+        const allNumeric = entryLines.every(p =>
+            (/^[0-9]+$/.test(p.key) || p.key.length <= 3) &&
+            (/^[0-9]+$/.test(p.value) || p.value.length <= 3)
+        );
+        if (allNumeric) {
+            return lines.map(line => baseIndent + line.trim());
+        }
+
+        const baseIndentWidth = this.replaceTabsWithSpaces(baseIndent).length;
+        const maxFirstColWidth = Math.max(...entryLines.map(p =>
+            this.replaceTabsWithSpaces(p.key).length
+        ));
+        // Tabs: round up to the next tab stop after the longest key.
+        // Spaces: exactly 1 space after the longest key, no rounding.
+        const targetColumn = this.useTabs
+            ? Math.ceil((baseIndentWidth + maxFirstColWidth + 1) / this.tabSize) * this.tabSize
+            : baseIndentWidth + maxFirstColWidth + 1;
+
+        return parsedLines.map(p => {
+            if (p.isComment) {
+                return baseIndent + p.raw;
+            }
+            const firstPartWidth = this.replaceTabsWithSpaces(p.key).length;
+            let spacing: string;
+            if (this.useTabs) {
+                spacing = this.calculateTabSpaceAlignment(baseIndentWidth + firstPartWidth, targetColumn);
+            } else {
+                spacing = ' '.repeat(Math.max(1, targetColumn - baseIndentWidth - firstPartWidth));
+            }
+            return baseIndent + p.key + spacing + p.value + p.suffix;
+        });
     }
 
     /**
@@ -442,6 +631,39 @@ class DtsFormatter {
             return start + val + ';';
         }
 
+        // If there's only one value (whitespace-separated array), format with proper alignment
+        if (values.length === 1 && val.includes('\n')) {
+            const lines = val.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+            if (lines.length === 0) {
+                return start + ';';
+            }
+            if (lines.length === 1) {
+                return start + lines[0] + (lines[0].endsWith(';') ? '' : ';');
+            }
+
+            // Extract content entries from all lines, stripping '<' prefix and '>;'/'>' suffix
+            const contentLines: string[] = [];
+            for (let i = 0; i < lines.length; i++) {
+                let line = i === 0 ? lines[i].replace(/^<\s*/, '') : lines[i];
+                if (i === lines.length - 1) {
+                    line = line.replace(/>;?$/, '').trim();
+                }
+                if (line) {
+                    contentLines.push(line);
+                }
+            }
+
+            if (contentLines.length === 0) {
+                return start + '<>;';
+            }
+
+            const bracketAlign = this.calculateAlignmentForColumn(this.replaceTabsWithSpaces(start + '<').length);
+            const allFormatted = this.formatWhitespaceSeparatedLines(contentLines, bracketAlign);
+            const firstEntry = allFormatted[0].slice(bracketAlign.length);
+            return [start + '<' + firstEntry, ...allFormatted.slice(1), indentation + '>;'].join('\n');
+        }
+
         // Check if we can format as single line (ignoring comments for length check)
         const singleLineResult = this.tryFormatAsSingleLine(start, val, values);
         if (singleLineResult) {
@@ -477,7 +699,10 @@ class DtsFormatter {
                     }
 
                     const fullLine = `${indentation}${prop} = ${cleanVal}${extractedComment ? `; ${extractedComment}` : ';'}`;
-                    if (this.replaceTabsWithSpaces(fullLine).length <= this.maxLineLength) {
+                    // In spaces mode, skip the early return if the value still contains tabs
+                    // so it falls through to formatMultiLineProperty which converts them properly.
+                    if (this.replaceTabsWithSpaces(fullLine).length <= this.maxLineLength &&
+                        (this.useTabs || !cleanVal.includes('\t'))) {
                         return fullLine;
                     }
                 }
