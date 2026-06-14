@@ -54,7 +54,10 @@ npm run compile
 ```
 vscode-devicetree/
 ├── src/                   # Source code
+│   ├── diagnostics.ts     # Diagnostic logic
 │   ├── extension.ts       # Main extension entry point
+│   ├── formatter.ts       # Formatting and indentation logic
+│   ├── links.ts           # Include path resolution and link handling
 │   └── test/              # Test files
 ├── syntaxes/              # TextMate grammar files
 │   ├── dts.tmLanguage.json
