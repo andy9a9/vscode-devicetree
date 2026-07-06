@@ -66,6 +66,11 @@
                         "default": true,
                         "description": "Enable warnings for DeviceTree files. If disabled, only errors will be reported."
                     },
+                    "devicetree.diagnostics.enableSyntaxValidation": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Enable structural syntax validation (unmatched brackets, missing semicolons, etc.)."
+                    },
                     "devicetree.diagnostics.lineLengthIncludeComments": {
                         "type": "boolean",
                         "default": true,
@@ -88,6 +93,13 @@
                         "description": "Maximum line length for DeviceTree files. Lines longer than this will be wrapped."
                     }
                 }
+            }
+        ],
+        "commands": [
+            {
+                "command": "devicetree.validateSyntax",
+                "title": "Validate Syntax",
+                "category": "Devicetree"
             }
         ],
         "grammars": [
