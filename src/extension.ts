@@ -5,7 +5,7 @@
 import * as vscode from 'vscode';
 // Import the formatter and diagnostics providers
 import { DtsDocumentLinkProvider } from './features/links';
-import { DtsDiagnosticsProvider } from './diagnostics';
+import { DtsDiagnosticsProvider } from './features/diagnostics';
 import { DtsFormatterProvider } from './formatter';
 
 // Global provider instances
