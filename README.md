@@ -63,9 +63,18 @@ Install this extension from the [Visual Studio Code Marketplace](https://marketp
 
 ## Commands
 
-### `DeviceTree: Validate Syntax` *(Coming Soon)*
+### `DeviceTree: Validate Syntax`
 
-Validates DeviceTree syntax and highlights errors.
+- Validates DeviceTree syntax and highlights errors based on:
+  - tokens
+    - bracket pairs `{}`, `<>`, `[]`, `()`
+      - unmatched openers
+      - unexpected closers
+      - mismatched pairs
+    - unterminated string literals
+    - unterminated block comments
+    - missing `;`, `,`
+  - `dtc` *(Coming Soon)*
 
 ### `DeviceTree: Format Document`
 
