@@ -4,7 +4,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 // Import the formatter and diagnostics providers
-import { DtsDocumentLinkProvider } from './links';
+import { DtsDocumentLinkProvider } from './features/links';
 import { DtsDiagnosticsProvider } from './diagnostics';
 import { DtsFormatterProvider } from './formatter';
 

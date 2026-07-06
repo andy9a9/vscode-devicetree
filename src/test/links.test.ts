@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
-import { DtsDocumentLinkProvider, parseIncludes } from '../links';
+import { DtsDocumentLinkProvider, parseIncludes } from '../features/links';
 
 // Shared setup for all definition tests
 suiteSetup(async () => {

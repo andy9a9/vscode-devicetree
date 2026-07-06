@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { tokenize, isIncludeToken } from '../../parser/lexer';
 
 /**
- * Represents a parsed #include directive
+ * Represents a parsed `#include` directive.
  */
 export interface IncludeInfo {
     path: string;
@@ -13,72 +14,55 @@ export interface IncludeInfo {
 }
 
 /**
- * Parse all #include directives from a document
- * @param document The document to parse
- * @returns Array of parsed include directives
+ * Parse all `#include` directives from a document.
+ * @param document The document to parse.
+ * @returns Array of parsed include directives.
  */
 export function parseIncludes(document: vscode.TextDocument): IncludeInfo[] {
-    const includes: IncludeInfo[] = [];
-    const includeRegex = /#include\s+[<"]([^>"]+)[>"]/;
-    const text = document.getText()
-        .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
-        .replace(/\/\/.*/g, m => ' '.repeat(m.length));
-
-    const lines = text.split('\n');
-
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const includeMatch = line.match(includeRegex);
-
-        if (includeMatch) {
-            const includePath = includeMatch[1];
-            const startIndex = line.indexOf(includeMatch[1]);
-            const endIndex = startIndex + includeMatch[1].length;
-
-            includes.push({
-                path: includePath,
-                line: i,
-                startChar: startIndex,
-                endChar: endIndex
-            });
-        }
-    }
-
-    return includes;
+    return tokenize(document.getText())
+        .filter(isIncludeToken)
+        .map(t => {
+            const startChar = t.column + (t.pathOffset - t.offset);
+            return {
+                path: t.includePath,
+                line: t.line,
+                startChar,
+                endChar: startChar + t.includePath.length,
+            };
+        });
 }
 
 /**
- * Provider for DeviceTree #include directive links
- * Shows underlined clickable links for include paths that exist
+ * Provider for DeviceTree `#include` directive links.
+ * Shows underlined clickable links for include paths that exist on disk.
  */
 export class DtsDocumentLinkProvider implements vscode.DocumentLinkProvider {
     private includeSearchPaths: string[];
 
+    /**
+     * Create a link provider with the configured include search paths.
+     * @param includeSearchPaths Include search paths.
+     */
     constructor(includeSearchPaths: string[]) {
         this.includeSearchPaths = includeSearchPaths;
     }
 
     /**
-     * Update configuration settings
-     * @param includeSearchPaths The new include search paths
+     * Update configuration settings.
+     * @param includeSearchPaths The include search paths to use.
      */
     updateSearchPaths(includeSearchPaths: string[]): void {
         this.includeSearchPaths = includeSearchPaths;
     }
 
     /**
-     * Search in arch directories for Linux kernel and U-Boot patterns
-     * Linux: arch/'*'/boot/dts/, U-Boot: arch/'*'/dts/
-     * @param workspaceRoot The workspace root path
-     * @param includePath The include path to search for
-     * @returns The URI of the found file or null
+     * Search in arch directories for Linux kernel and U-Boot patterns.
+     * @param workspaceRoot The workspace root to search in.
+     * @param includePath The include path to resolve.
+     * @returns Matching file URI, or `null` when nothing is found.
      */
-    private searchInArchDirectories(
-        workspaceRoot: string,
-        includePath: string
-    ): vscode.Uri | null {
+    private searchInArchDirectories(workspaceRoot: string, includePath: string): vscode.Uri | null {
         const archDir = path.join(workspaceRoot, 'arch');
-
         if (!fs.existsSync(archDir)) {
             return null;
         }
@@ -90,8 +74,8 @@ export class DtsDocumentLinkProvider implements vscode.DocumentLinkProvider {
 
         // Search patterns: Linux kernel and U-Boot
         const patterns = [
-            ['boot', 'dts'],  // Linux kernel: arch/*/boot/dts/
-            ['dts']           // U-Boot: arch/*/dts/
+            ['boot', 'dts'], // Linux kernel: arch/*/boot/dts/
+            ['dts'],         // U-Boot: arch/*/dts/
         ];
 
         for (const arch of archTypes) {
@@ -107,11 +91,11 @@ export class DtsDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     /**
-     * Search in configured custom paths
-     * @param workspaceRoot The workspace root path
-     * @param includePath The include path to search for
-     * @param searchPaths Custom search paths
-     * @returns The URI of the found file or null
+     * Search in configured custom paths.
+     * @param workspaceRoot The workspace root to search in.
+     * @param includePath The include path to resolve.
+     * @param searchPaths Additional search paths configured by the user.
+     * @returns Matching file URI, or `null` when nothing is found.
      */
     private searchInCustomPaths(
         workspaceRoot: string,
@@ -128,10 +112,10 @@ export class DtsDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     /**
-     * Find the included file in the workspace (public for diagnostics)
-     * @param includePath The path from the include directive
-     * @param currentFileDir The directory of the current file
-     * @returns The URI of the found file or null
+     * Find the included file in the workspace.
+     * @param includePath The include path to resolve.
+     * @param currentFileDir Directory of the current document.
+     * @returns Matching file URI, or `null` when nothing is found.
      */
     public async findIncludedFile(
         includePath: string,
@@ -199,13 +183,11 @@ export class DtsDocumentLinkProvider implements vscode.DocumentLinkProvider {
     }
 
     /**
-     * Provide document links for all #include directives
-     * @param document The document to provide links for
-     * @returns Array of document links
+     * Provide document links for all `#include` directives.
+     * @param document The document to provide links for.
+     * @returns Array of document links.
      */
-    async provideDocumentLinks(
-        document: vscode.TextDocument
-    ): Promise<vscode.DocumentLink[]> {
+    async provideDocumentLinks(document: vscode.TextDocument): Promise<vscode.DocumentLink[]> {
         const includes = parseIncludes(document);
         const links: vscode.DocumentLink[] = [];
         const currentFileDir = path.dirname(document.uri.fsPath);
