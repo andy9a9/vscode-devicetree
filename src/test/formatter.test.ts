@@ -209,6 +209,50 @@ suite('DTS Formatter - Comment Preservation', () => {
         assert.ok(result.includes('/* first */'));
         assert.ok(result.includes('/* second */'));
     });
+
+    test('Should not discard value content that follows a mid-value comment', async () => {
+        // Regression test: a comment sitting *inside* a value (not at the end)
+        // must not be mistaken for a trailing comment, which previously caused
+        // everything after it to be silently dropped.
+        const input = '/ {\nreg = <0x1000 /* base */ 0x100>;\n};';
+        const expected = '/ {\n\treg = <0x1000 /* base */ 0x100>;\n};';
+        const result = await formatDocument(input);
+        assert.strictEqual(result, expected);
+    });
+
+    test('Should keep a genuine trailing comment on the same line as the value', async () => {
+        const input = '/ {\nstatus = "okay"; // enabled\n};';
+        const expected = '/ {\n\tstatus = "okay"; // enabled\n};';
+        const result = await formatDocument(input);
+        assert.strictEqual(result, expected);
+    });
+
+    test('Should keep a comment after a node\'s closing brace on the same line', async () => {
+        const input = '/ {\nnode {\nprop = <1>;\n}; // end of node\n};';
+        const expected = '/ {\n\tnode {\n\t\tprop = <1>;\n\t}; // end of node\n};';
+        const result = await formatDocument(input);
+        assert.strictEqual(result, expected);
+    });
+});
+
+suite('DTS Formatter - Comma Splitting', () => {
+    test('Should not split commas nested inside a function-call value', async () => {
+        // Regression test: a value with both a real top-level separator comma
+        // and commas nested inside a macro/function call must only split on
+        // the top-level one.
+        const input = '/ {\nsink-pdos = <&clk1>, <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;\n};';
+        const expected = '/ {\n\tsink-pdos = <&clk1>, <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;\n};';
+        const result = await formatDocument(input);
+        assert.strictEqual(result, expected);
+    });
+
+    test('Should not split PDO macro function names or parenthesized arguments across lines', async () => {
+        const input = '/ {\nsink-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)\n\t\t     PDO_VAR(5000, 20000, 3000)>;\n};';
+        const result = await formatDocument(input);
+        assert.ok(result.includes('PDO_FIXED'));
+        assert.ok(result.includes('PDO_VAR'));
+        assert.ok(!result.match(/P\s+D\s+O\s+_\s+F/));
+    });
 });
 
 suite('DTS Formatter - Indentation Options', () => {
@@ -481,6 +525,18 @@ pinctrl-0 = <&pinctrl_uart>;
 });
 
 suite('DTS Formatter - fsl,pins Alignment', () => {
+    test('Should normalize a single pin entry that starts on its own line', async () => {
+        // Regression test: when `fsl,pins =` is on its own line and the single
+        // <key value> entry (with a trailing comment) is on the next line, the
+        // property must still get normal key/value whitespace normalization
+        // and the semicolon must land right after the value, before the comment
+        // - not be appended after the comment.
+        const input = '\tnc2: ncGrp3 {\n\t\tfsl,pins =\n\t\t\t   <MX8MP_IOMUXC_SPDIF_RX__GPIO5_IO04\t   0x6>;     /* SODIMM 3 */       \n\t};';
+        const expected = 'nc2: ncGrp3 {\n\tfsl,pins = <MX8MP_IOMUXC_SPDIF_RX__GPIO5_IO04\t0x6>; /* SODIMM 3 */\n};';
+        const result = await formatDocument(input);
+        assert.strictEqual(result, expected);
+    });
+
     test('Should align hex values when first entry has trailing inline comment', async () => {
         // The inline comment after the hex value must not break column alignment for remaining entries
         const input = `&iomuxc {
@@ -547,7 +603,7 @@ suite('DTS Formatter - fsl,pins Alignment', () => {
     });
 
     test('Should keep source-pdos with internal commas on single line', async () => {
-        // Commas inside PDO_FIXED(...) are NOT value separators — the whole thing stays on one line
+        // Commas inside PDO_FIXED(...) are NOT value separators - the whole thing stays on one line
         const input = `/ {
 \tusb_con: connector {
 \t\tsource-pdos = <PDO_FIXED(5000, 3000, PDO_FIXED_USB_COMM)>;

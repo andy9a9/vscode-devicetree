@@ -4,14 +4,16 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 // Import the formatter and diagnostics providers
-import { DtsDocumentLinkProvider } from './links';
-import { DtsDiagnosticsProvider } from './diagnostics';
-import { DtsFormatterProvider } from './formatter';
+import { DtsDocumentLinkProvider } from './features/links';
+import { DtsDiagnosticsProvider } from './features/diagnostics';
+import { DtsFormatterProvider } from './features/formatter';
+import { DtsSyntaxValidator } from './features/syntax-validator';
 
 // Global provider instances
 let linkProvider: DtsDocumentLinkProvider | undefined;
 let diagnosticsProvider: DtsDiagnosticsProvider | undefined;
 let formatterProvider: DtsFormatterProvider | undefined;
+let syntaxValidator: DtsSyntaxValidator | undefined;
 
 /**
  * Activate the extension
@@ -22,15 +24,17 @@ let formatterProvider: DtsFormatterProvider | undefined;
 export function activate(context: vscode.ExtensionContext) {
     // Get configuration
     const config = vscode.workspace.getConfiguration('devicetree');
-    const maxLineLength = config.get<number>('maxLineLength', 80);
-    const enableWarnings = config.get<boolean>('diagnostics.enableWarnings', true);
-    const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
     const includeSearchPaths = config.get<string[]>('includeSearchPaths', ['include', 'include/dt-bindings']);
+    const maxLineLength = config.get<number>('maxLineLength', 80);
+    const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
+    const enableSyntaxValidation = config.get<boolean>('diagnostics.enableSyntaxValidation', true);
+    const enableWarnings = config.get<boolean>('diagnostics.enableWarnings', true);
 
     // Create providers
     linkProvider = new DtsDocumentLinkProvider(includeSearchPaths);
     diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength, includeComments, linkProvider);
     formatterProvider = new DtsFormatterProvider(maxLineLength);
+    syntaxValidator = new DtsSyntaxValidator();
 
     context.subscriptions.push(
         vscode.languages.registerDocumentLinkProvider('dts', linkProvider)
@@ -40,13 +44,29 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.languages.registerDocumentFormattingEditProvider('dts', formatterProvider)
     );
 
+    // Register the "Check Syntax" command
+    context.subscriptions.push(syntaxValidator);
+    context.subscriptions.push(
+        vscode.commands.registerCommand('devicetree.validateSyntax', () => {
+            const editor = vscode.window.activeTextEditor;
+            if (editor && editor.document.languageId === 'dts' && syntaxValidator) {
+                syntaxValidator.validateDocument(editor.document);
+            }
+        })
+    );
+
     // Register diagnostics provider
     context.subscriptions.push(diagnosticsProvider);
-    if (enableWarnings) {
-        // Helper function to analyze document if it's a DTS file
+    if (enableSyntaxValidation || enableWarnings) {
+        // Helper function to check syntax and analyze document if it's a DTS file
         const analyzeIfDts = (document: vscode.TextDocument): void => {
-            if (document.languageId === 'dts' && diagnosticsProvider) {
-                void diagnosticsProvider.analyzeDocument(document);
+            if (document.languageId === 'dts') {
+                if (enableSyntaxValidation && syntaxValidator) {
+                    syntaxValidator.validateDocument(document);
+                }
+                if (enableWarnings && diagnosticsProvider) {
+                    void diagnosticsProvider.analyzeDocument(document);
+                }
             }
         };
 
@@ -72,8 +92,13 @@ export function activate(context: vscode.ExtensionContext) {
         // Listen for document closes
         context.subscriptions.push(
             vscode.workspace.onDidCloseTextDocument(document => {
-                if (document.languageId === 'dts' && diagnosticsProvider) {
-                    diagnosticsProvider.clearDocument(document);
+                if (document.languageId === 'dts') {
+                    if (enableSyntaxValidation && syntaxValidator) {
+                        syntaxValidator.clearDocument(document);
+                    }
+                    if (enableWarnings && diagnosticsProvider) {
+                        diagnosticsProvider.clearDocument(document);
+                    }
                 }
             })
         );
@@ -84,18 +109,25 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration('devicetree')) {
                 const config = vscode.workspace.getConfiguration('devicetree');
+                const enableSyntaxValidation = config.get<boolean>('diagnostics.enableSyntaxValidation', true);
                 const maxLineLength = config.get<number>('maxLineLength', 80);
                 const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
                 const includeSearchPaths = config.get<string[]>('includeSearchPaths', ['include', 'include/dt-bindings']);
 
+                if (syntaxValidator) {
+                    vscode.workspace.textDocuments.forEach(document => {
+                        if (document.languageId === 'dts' && syntaxValidator) {
+                            if (enableSyntaxValidation) {
+                                syntaxValidator.validateDocument(document);
+                            } else {
+                                syntaxValidator.clearDocument(document);
+                            }
+                        }
+                    });
+                }
                 // Update formatter settings
                 if (formatterProvider) {
                     formatterProvider.updateSettings(maxLineLength);
-                }
-
-                // Update link provider search paths
-                if (linkProvider) {
-                    linkProvider.updateSearchPaths(includeSearchPaths);
                 }
 
                 // Update diagnostics settings
@@ -109,6 +141,11 @@ export function activate(context: vscode.ExtensionContext) {
                         }
                     });
                 }
+
+                // Update link provider search paths
+                if (linkProvider) {
+                    linkProvider.updateSearchPaths(includeSearchPaths);
+                }
             }
         })
     );
@@ -120,6 +157,10 @@ export function activate(context: vscode.ExtensionContext) {
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function deactivate() {
+    if (syntaxValidator) {
+        syntaxValidator.dispose();
+        syntaxValidator = undefined;
+    }
     if (formatterProvider) {
         formatterProvider.dispose();
         formatterProvider = undefined;

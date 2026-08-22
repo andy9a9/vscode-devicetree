@@ -53,19 +53,22 @@ npm run compile
 
 ```
 vscode-devicetree/
-├── src/                   # Source code
-│   ├── diagnostics.ts     # Diagnostic logic
-│   ├── extension.ts       # Main extension entry point
-│   ├── formatter.ts       # Formatting and indentation logic
-│   ├── links.ts           # Include path resolution and link handling
-│   └── test/              # Test files
-├── syntaxes/              # TextMate grammar files
+├── src/                      # Source code
+│   ├── extension.ts          # Main extension entry point
+│   ├── features/             # Extension features
+│   │   ├── diagnostics/      # Diagnostic logic
+│   │   ├── formatter/        # Formatting and indentation logic
+│   │   ├── links/            # Include path resolution and link handling
+│   │   └── syntax-validator/ # Structural syntax validation
+│   ├── parser/               # Tokenization and parsing helpers
+│   └── test/                 # Test files
+├── syntaxes/                 # TextMate grammar files
 │   ├── dts.tmLanguage.json
 │   └── devicetree-language.json
-├── dist/                  # Compiled output
-├── docs/                  # Documentation
-├── images/                # Extension icons and images
-└── package.json           # Extension manifest
+├── dist/                     # Compiled output
+├── docs/                     # Documentation
+├── images/                   # Extension icons and images
+└── package.json              # Extension manifest
 ```
 
 ## Development Workflow
