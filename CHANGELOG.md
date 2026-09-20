@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2026-09-20
+
+- Switched to token variant
+- Syntax validation feature implemented
+
 ## [0.2.0] - 2026-06-14
 
 - Include feature implemented
