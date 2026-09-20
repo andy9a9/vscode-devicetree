@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { Token, TokenType, tokenize } from '../../parser/lexer';
+import { getOutputChannel } from '../../utils/output-channel';
 
 /**
  * Interface for formatting operation results
@@ -1021,7 +1022,7 @@ export class DtsFormatterProvider implements vscode.DocumentFormattingEditProvid
      */
     constructor(maxLineLength: number) {
         this.maxLineLength = maxLineLength;
-        this.outputChannel = vscode.window.createOutputChannel('DeviceTree');
+        this.outputChannel = getOutputChannel();
     }
 
     /**
@@ -1080,9 +1081,10 @@ export class DtsFormatterProvider implements vscode.DocumentFormattingEditProvid
     }
 
     /**
-     * Dispose resources when the extension is deactivated
+     * Dispose resources when the extension is deactivated.
+     * The shared output channel is owned and disposed centrally.
      */
     dispose(): void {
-        this.outputChannel.dispose();
+        // no-op: the output channel is shared and disposed by the extension host
     }
 }

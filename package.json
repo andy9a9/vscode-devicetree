@@ -76,6 +76,16 @@
                         "default": true,
                         "markdownDescription": "Include comments when calculating line length for warnings."
                     },
+                    "devicetree.DTCCompilerPath": {
+                        "type": "string",
+                        "default": "${workspaceFolder}/scripts/dtc/dtc",
+                        "description": "Path to the DeviceTree Compiler (dtc) executable."
+                    },
+                    "devicetree.CPreprocessorPath": {
+                        "type": "string",
+                        "default": "cpp",
+                        "description": "Path to the C preprocessor (cpp) executable."
+                    },
                     "devicetree.includeSearchPaths": {
                         "type": "array",
                         "default": [
@@ -99,6 +109,11 @@
             {
                 "command": "devicetree.validateSyntax",
                 "title": "Validate Syntax",
+                "category": "Devicetree"
+            },
+            {
+                "command": "devicetree.validateDTB",
+                "title": "Validate DTB via DTC",
                 "category": "Devicetree"
             }
         ],

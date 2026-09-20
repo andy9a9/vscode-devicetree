@@ -23,41 +23,75 @@ async function getDiagnostics(content: string): Promise<vscode.Diagnostic[]> {
     return diagnostics;
 }
 
+function formatDiagnostics(diagnostics: vscode.Diagnostic[]): string {
+    if (diagnostics.length === 0) {
+        return 'none';
+    }
+
+    return diagnostics.map(diagnostic => {
+        const start = `${diagnostic.range.start.line}:${diagnostic.range.start.character}`;
+        const end = `${diagnostic.range.end.line}:${diagnostic.range.end.character}`;
+        const source = diagnostic.source ?? 'unknown';
+        const severity = vscode.DiagnosticSeverity[diagnostic.severity] ?? 'Unknown';
+        return `[${source}] ${severity} ${start}-${end} ${diagnostic.message}`;
+    }).join('\n');
+}
+
+function getLineLengthDiagnostics(diagnostics: vscode.Diagnostic[]): vscode.Diagnostic[] {
+    return diagnostics.filter(diagnostic =>
+        diagnostic.source === 'DeviceTree' &&
+        diagnostic.severity === vscode.DiagnosticSeverity.Warning &&
+        diagnostic.message.includes('exceeds maximum length')
+    );
+}
+
 suite('DTS Diagnostics - Line Length', () => {
     test('Should not warn for lines within limit', async () => {
         const input = '/ {\n\tmodel = "Test";\n};';
         const diagnostics = await getDiagnostics(input);
-        assert.strictEqual(diagnostics.length, 0);
+        const lineLengthDiagnostics = getLineLengthDiagnostics(diagnostics);
+        assert.strictEqual(
+            lineLengthDiagnostics.length,
+            0,
+            `Unexpected diagnostics:\n${formatDiagnostics(diagnostics)}`
+        );
     });
 
     test('Should warn for lines exceeding 80 characters', async () => {
         const input = '/ {\n\tmodel = "This is a very long string that definitely exceeds the maximum line length of 80 characters";\n};';
         const diagnostics = await getDiagnostics(input);
-        assert.ok(diagnostics.length > 0);
-        assert.ok(diagnostics[0].message.includes('exceeds maximum length'));
+        const lineLengthDiagnostics = getLineLengthDiagnostics(diagnostics);
+        assert.ok(lineLengthDiagnostics.length > 0, `Expected line-length warning. Diagnostics:\n${formatDiagnostics(diagnostics)}`);
+        assert.ok(lineLengthDiagnostics[0].message.includes('exceeds maximum length'));
     });
 
     test('Should calculate tab width correctly (tab size 8)', async () => {
         // 3 tabs (24 chars) + content should be calculated correctly
         const input = '\t\t\tmodel = "Test";';
         const diagnostics = await getDiagnostics(input);
+        const lineLengthDiagnostics = getLineLengthDiagnostics(diagnostics);
         // This line should be within 80 chars with tab size 8
-        assert.strictEqual(diagnostics.length, 0);
+        assert.strictEqual(
+            lineLengthDiagnostics.length,
+            0,
+            `Unexpected diagnostics:\n${formatDiagnostics(diagnostics)}`
+        );
     });
 
     test('Should warn for line with tabs exceeding limit', async () => {
         // 3 tabs (24) + long string should exceed 80
         const input = '\t\t\tmodel = "This is a very long string that will exceed the limit with tabs";';
         const diagnostics = await getDiagnostics(input);
-        assert.ok(diagnostics.length > 0);
+        const lineLengthDiagnostics = getLineLengthDiagnostics(diagnostics);
+        assert.ok(lineLengthDiagnostics.length > 0, `Expected line-length warning. Diagnostics:\n${formatDiagnostics(diagnostics)}`);
     });
 
     test('Should handle mixed tabs and spaces correctly', async () => {
         // Line with tabs and spaces before comment
         const input = '\t\t<MX8MP_IOMUXC_SAI2_TXFS__GPIO4_IO24\t\t0x116>,\t      /* comment that is long */';
         const diagnostics = await getDiagnostics(input);
-        // Should calculate visual length correctly with tab stops
-        assert.ok(diagnostics.length >= 0); // Just verify it doesn't crash
+        const lineLengthDiagnostics = getLineLengthDiagnostics(diagnostics);
+        assert.ok(lineLengthDiagnostics.length > 0, `Expected line-length warning. Diagnostics:\n${formatDiagnostics(diagnostics)}`);
     });
 
     test('Should report correct line number', async () => {

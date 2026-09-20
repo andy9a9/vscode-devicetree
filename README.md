@@ -51,6 +51,16 @@ This extension provides intelligent navigation for `#include` directives with su
 - **Diagnostic warnings**: Missing include files are highlighted with warnings
 - **Configurable search paths**: Add custom directories via `devicetree.includeSearchPaths` setting
 
+### Validation via DTC
+
+This extension can validate DeviceTree files with the external Device Tree Compiler (`dtc`):
+
+- **Command-driven validation**: Run `DeviceTree: Validate DTB` from the Command Palette
+- **Preprocessing support**: Runs the file through `cpp` first so `#include` directives and dt-bindings macros are resolved before invoking `dtc`
+- **Mapped diagnostics**: Errors and warnings from `dtc` are surfaced as editor diagnostics on the corresponding lines
+- **Output logging**: Raw `cpp` and `dtc` output is written to the shared `DeviceTree` output channel
+- **Configurable tool paths**: Override `devicetree.DTCCompilerPath` and `devicetree.CPreprocessorPath` when needed
+
 ### Supported File Extensions
 
 - `.dts` - Device Tree Source files
@@ -74,7 +84,12 @@ Install this extension from the [Visual Studio Code Marketplace](https://marketp
     - unterminated string literals
     - unterminated block comments
     - missing `;`, `,`
-  - `dtc` *(Coming Soon)*
+
+### `DeviceTree: Validate DTB`
+
+- Runs the current file through `cpp` and `dtc`
+- Reports `dtc` errors and warnings as diagnostics in the editor
+- Writes the raw command output to the `DeviceTree` output channel
 
 ### `DeviceTree: Format Document`
 
