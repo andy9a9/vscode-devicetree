@@ -8,6 +8,7 @@ import { DtsDocumentLinkProvider } from './features/links';
 import { DtsDiagnosticsProvider } from './features/diagnostics';
 import { DtsFormatterProvider } from './features/formatter';
 import { DtsSyntaxValidator } from './features/syntax-validator';
+import { disposeOutputChannel } from './utils/output-channel';
 
 // Global provider instances
 let linkProvider: DtsDocumentLinkProvider | undefined;
@@ -172,4 +173,5 @@ export function deactivate() {
     if (linkProvider) {
         linkProvider = undefined;
     }
+    disposeOutputChannel();
 }
