@@ -2,11 +2,7 @@
     "name": "DTS",
     "scopeName": "source.dts",
     "patterns": [
-        {
-            "comment": "Line comments",
-            "match": "//.*$",
-            "name": "comment.line.double-slash"
-        },
+        {"include": "#line-comment"},
         {
             "comment": "Include directories",
             "match": "(#include)(\\s+(<|\")([^>\"]*)(>|\"))",
@@ -38,17 +34,24 @@
             "begin": "<",
             "end": ">",
             "patterns": [
+                {"include": "#line-comment"},
                 {"include": "#reference"},
                 {"include": "#number"},
                 {"include": "#constant"},
                 {"include": "#block-comment"}
             ]
         },
+        {"include": "#line-comment"},
         {"include": "#reference"},
         {"include": "#string"},
         {"include": "#block-comment"}
     ],
     "repository": {
+        "line-comment": {
+            "comment": "Line comments",
+            "match": "//.*$",
+            "name": "comment.line.double-slash"
+        },
         "block-comment": {
             "comment": "Block comments",
             "begin": "/\\*",
