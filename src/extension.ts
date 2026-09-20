@@ -8,44 +8,75 @@ import { DtsDocumentLinkProvider } from './features/links';
 import { DtsDiagnosticsProvider } from './features/diagnostics';
 import { DtsFormatterProvider } from './features/formatter';
 import { DtsSyntaxValidator } from './features/syntax-validator';
+import { DtcValidator } from './features/dtc-validator';
 import { disposeOutputChannel } from './utils/output-channel';
+
+// Track document listener subscriptions so we can dispose and re-register them
+let documentListenerDisposables: vscode.Disposable[] = [];
+
+function clearDocumentListeners(): void {
+    documentListenerDisposables.forEach(d => d.dispose());
+    documentListenerDisposables = [];
+}
 
 // Global provider instances
 let linkProvider: DtsDocumentLinkProvider | undefined;
 let diagnosticsProvider: DtsDiagnosticsProvider | undefined;
 let formatterProvider: DtsFormatterProvider | undefined;
 let syntaxValidator: DtsSyntaxValidator | undefined;
+let dtcValidator: DtcValidator | undefined;
 
-/**
- * Activate the extension
- * This method is called when your extension is activated
- * @param context The extension context
- */
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
-export function activate(context: vscode.ExtensionContext) {
-    // Get configuration
+interface DevicetreeSettings {
+    includeSearchPaths: string[];
+    maxLineLength: number;
+    includeComments: boolean;
+    enableSyntaxValidation: boolean;
+    enableWarnings: boolean;
+}
+
+function getSettings(): DevicetreeSettings {
     const config = vscode.workspace.getConfiguration('devicetree');
-    const includeSearchPaths = config.get<string[]>('includeSearchPaths', ['include', 'include/dt-bindings']);
-    const maxLineLength = config.get<number>('maxLineLength', 80);
-    const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
-    const enableSyntaxValidation = config.get<boolean>('diagnostics.enableSyntaxValidation', true);
-    const enableWarnings = config.get<boolean>('diagnostics.enableWarnings', true);
+    return {
+        includeSearchPaths: config.get<string[]>('includeSearchPaths', ['include', 'include/dt-bindings']),
+        maxLineLength: config.get<number>('maxLineLength', 80),
+        includeComments: config.get<boolean>('diagnostics.lineLengthIncludeComments', true),
+        enableSyntaxValidation: config.get<boolean>('diagnostics.enableSyntaxValidation', true),
+        enableWarnings: config.get<boolean>('diagnostics.enableWarnings', true),
+    };
+}
 
-    // Create providers
-    linkProvider = new DtsDocumentLinkProvider(includeSearchPaths);
-    diagnosticsProvider = new DtsDiagnosticsProvider(maxLineLength, includeComments, linkProvider);
-    formatterProvider = new DtsFormatterProvider(maxLineLength);
-    syntaxValidator = new DtsSyntaxValidator();
+function analyzeIfDts(document: vscode.TextDocument, settings: DevicetreeSettings): void {
+    if (document.languageId !== 'dts') {
+        return;
+    }
+    if (settings.enableSyntaxValidation && syntaxValidator) {
+        syntaxValidator.validateDocument(document);
+    }
+    if (settings.enableWarnings && diagnosticsProvider) {
+        void diagnosticsProvider.analyzeDocument(document);
+    }
+}
 
-    context.subscriptions.push(
-        vscode.languages.registerDocumentLinkProvider('dts', linkProvider)
-    );
+function clearDtsDiagnostics(document: vscode.TextDocument, settings: DevicetreeSettings): void {
+    if (document.languageId !== 'dts') {
+        return;
+    }
+    if (settings.enableSyntaxValidation && syntaxValidator) {
+        syntaxValidator.clearDocument(document);
+    }
+    if (settings.enableWarnings && diagnosticsProvider) {
+        diagnosticsProvider.clearDocument(document);
+    }
+    if (dtcValidator) {
+        dtcValidator.clearDocument(document);
+    }
+}
 
-    context.subscriptions.push(
-        vscode.languages.registerDocumentFormattingEditProvider('dts', formatterProvider)
-    );
+function registerCommands(context: vscode.ExtensionContext): void {
+    if (!syntaxValidator || !dtcValidator) {
+        return;
+    }
 
-    // Register the "Check Syntax" command
     context.subscriptions.push(syntaxValidator);
     context.subscriptions.push(
         vscode.commands.registerCommand('devicetree.validateSyntax', () => {
@@ -56,97 +87,126 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
-    // Register diagnostics provider
-    context.subscriptions.push(diagnosticsProvider);
-    if (enableSyntaxValidation || enableWarnings) {
-        // Helper function to check syntax and analyze document if it's a DTS file
-        const analyzeIfDts = (document: vscode.TextDocument): void => {
-            if (document.languageId === 'dts') {
-                if (enableSyntaxValidation && syntaxValidator) {
-                    syntaxValidator.validateDocument(document);
-                }
-                if (enableWarnings && diagnosticsProvider) {
-                    void diagnosticsProvider.analyzeDocument(document);
-                }
+    context.subscriptions.push(dtcValidator);
+    context.subscriptions.push(
+        vscode.commands.registerCommand('devicetree.validateDTB', () => {
+            const editor = vscode.window.activeTextEditor;
+            if (editor && editor.document.languageId === 'dts' && dtcValidator) {
+                void dtcValidator.validateDocument(editor.document, true);
             }
-        };
+        })
+    );
+}
 
-        // Listen for document changes
-        context.subscriptions.push(
+function registerDocumentListeners(context: vscode.ExtensionContext, settings: DevicetreeSettings): void {
+    // Always register close listener to clear all diagnostics including DTC ones.
+    documentListenerDisposables.push(
+        vscode.workspace.onDidCloseTextDocument(document => {
+            clearDtsDiagnostics(document, settings);
+        })
+    );
+
+    // Register change listeners with current settings captured in closure.
+    if (settings.enableSyntaxValidation || settings.enableWarnings) {
+        documentListenerDisposables.push(
             vscode.workspace.onDidChangeTextDocument(event => {
-                // Debounce: analyze after a short delay to avoid excessive analysis
-                setTimeout(() => analyzeIfDts(event.document), 500);
-            }));
-
-        // Listen for text editor options changes (e.g., when tab size changes in the editor)
-        context.subscriptions.push(
-            vscode.window.onDidChangeTextEditorOptions(event => {
-                analyzeIfDts(event.textEditor.document);
+                setTimeout(() => analyzeIfDts(event.document, settings), 500);
             })
         );
 
-        // Listen for document opens
-        context.subscriptions.push(
-            vscode.workspace.onDidOpenTextDocument(analyzeIfDts)
+        documentListenerDisposables.push(
+            vscode.window.onDidChangeTextEditorOptions(event => {
+                analyzeIfDts(event.textEditor.document, settings);
+            })
         );
 
-        // Listen for document closes
-        context.subscriptions.push(
-            vscode.workspace.onDidCloseTextDocument(document => {
-                if (document.languageId === 'dts') {
-                    if (enableSyntaxValidation && syntaxValidator) {
-                        syntaxValidator.clearDocument(document);
-                    }
-                    if (enableWarnings && diagnosticsProvider) {
-                        diagnosticsProvider.clearDocument(document);
-                    }
-                }
+        documentListenerDisposables.push(
+            vscode.workspace.onDidOpenTextDocument(document => {
+                analyzeIfDts(document, settings);
             })
         );
     }
 
-    // Listen for configuration changes
+    // Also subscribe to the disposables in context so they're cleaned up on deactivation
+    context.subscriptions.push(...documentListenerDisposables);
+}
+
+function refreshOpenDocuments(settings: DevicetreeSettings): void {
+    if (syntaxValidator) {
+        vscode.workspace.textDocuments.forEach(document => {
+            if (document.languageId === 'dts' && syntaxValidator) {
+                if (settings.enableSyntaxValidation) {
+                    syntaxValidator.validateDocument(document);
+                } else {
+                    syntaxValidator.clearDocument(document);
+                }
+            }
+        });
+    }
+
+    if (formatterProvider) {
+        formatterProvider.updateSettings(settings.maxLineLength);
+    }
+
+    if (diagnosticsProvider) {
+        const provider = diagnosticsProvider;
+        provider.updateSettings(settings.maxLineLength, settings.includeComments);
+        vscode.workspace.textDocuments.forEach(document => {
+            if (document.languageId !== 'dts') {
+                return;
+            }
+            if (settings.enableWarnings) {
+                void provider.analyzeDocument(document);
+            } else {
+                provider.clearDocument(document);
+            }
+        });
+    }
+
+    if (linkProvider) {
+        linkProvider.updateSearchPaths(settings.includeSearchPaths);
+    }
+}
+
+/**
+ * Activate the extension
+ * This method is called when your extension is activated
+ * @param context The extension context
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
+export function activate(context: vscode.ExtensionContext) {
+    const settings = getSettings();
+
+    linkProvider = new DtsDocumentLinkProvider(settings.includeSearchPaths);
+    diagnosticsProvider = new DtsDiagnosticsProvider(
+        settings.maxLineLength,
+        settings.includeComments,
+        linkProvider,
+    );
+    formatterProvider = new DtsFormatterProvider(settings.maxLineLength);
+    syntaxValidator = new DtsSyntaxValidator();
+    dtcValidator = new DtcValidator();
+
+    context.subscriptions.push(
+        vscode.languages.registerDocumentLinkProvider('dts', linkProvider)
+    );
+
+    context.subscriptions.push(
+        vscode.languages.registerDocumentFormattingEditProvider('dts', formatterProvider)
+    );
+
+    context.subscriptions.push(diagnosticsProvider);
+    registerCommands(context);
+    registerDocumentListeners(context, settings);
+
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration(event => {
             if (event.affectsConfiguration('devicetree')) {
-                const config = vscode.workspace.getConfiguration('devicetree');
-                const enableSyntaxValidation = config.get<boolean>('diagnostics.enableSyntaxValidation', true);
-                const maxLineLength = config.get<number>('maxLineLength', 80);
-                const includeComments = config.get<boolean>('diagnostics.lineLengthIncludeComments', true);
-                const includeSearchPaths = config.get<string[]>('includeSearchPaths', ['include', 'include/dt-bindings']);
-
-                if (syntaxValidator) {
-                    vscode.workspace.textDocuments.forEach(document => {
-                        if (document.languageId === 'dts' && syntaxValidator) {
-                            if (enableSyntaxValidation) {
-                                syntaxValidator.validateDocument(document);
-                            } else {
-                                syntaxValidator.clearDocument(document);
-                            }
-                        }
-                    });
-                }
-                // Update formatter settings
-                if (formatterProvider) {
-                    formatterProvider.updateSettings(maxLineLength);
-                }
-
-                // Update diagnostics settings
-                if (diagnosticsProvider) {
-                    diagnosticsProvider.updateSettings(maxLineLength, includeComments);
-
-                    // Re-analyze all open DTS documents with new settings
-                    vscode.workspace.textDocuments.forEach(document => {
-                        if (document.languageId === 'dts') {
-                            void diagnosticsProvider?.analyzeDocument(document);
-                        }
-                    });
-                }
-
-                // Update link provider search paths
-                if (linkProvider) {
-                    linkProvider.updateSearchPaths(includeSearchPaths);
-                }
+                const newSettings = getSettings();
+                refreshOpenDocuments(newSettings);
+                // Re-register listeners with new settings
+                clearDocumentListeners();
+                registerDocumentListeners(context, newSettings);
             }
         })
     );
@@ -158,6 +218,10 @@ export function activate(context: vscode.ExtensionContext) {
  */
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export function deactivate() {
+    if (dtcValidator) {
+        dtcValidator.dispose();
+        dtcValidator = undefined;
+    }
     if (syntaxValidator) {
         syntaxValidator.dispose();
         syntaxValidator = undefined;
