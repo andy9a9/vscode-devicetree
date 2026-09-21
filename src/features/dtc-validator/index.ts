@@ -335,7 +335,8 @@ export class DtcValidator implements vscode.Disposable {
 
     private getDtcArgs(context: ValidationContext): string[] {
         return [
-            '-O', process.platform === 'win32' ? 'NUL' : '/dev/null',
+            '-o', process.platform === 'win32' ? 'NUL' : '/dev/null',
+            '-O', 'dtb',
             '-I', 'dts',
             ...context.includeDirs.flatMap(dir => ['-i', dir]),
             context.preprocessedFile,
